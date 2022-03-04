@@ -52,8 +52,8 @@
 #define FONT_WIDTH  6
 #define FONT_HEIGHT 12
 
-#define SCR_WIDTH_P   316
-#define SCR_HEIGHT_P  236
+#define SCR_WIDTH_P  316
+#define SCR_HEIGHT_P 236
 #define SCR_OFFSET_X 2
 #define SCR_OFFSET_Y 2
 
@@ -142,15 +142,15 @@ int main(void)
 
 // Initialize program
 void cesh_Init(void) {
-    
+
     uint8_t i, j;
-    
+
     // Empty user/pwd variables
     for (i = 0; i < USER_PWD_LENGTH; i++) {
         user[i] = 0;
         pwd[i] = 0;
     }
-    
+
     // Empty screen buffer
     for (i = 0; i < SCR_WIDTH; i++) {
         for (j = 0; j < SCR_HEIGHT; j++) {
@@ -164,7 +164,7 @@ void cesh_Init(void) {
     }
 
     ti_SetGCBehavior(gfx_End, cesh_Init);
-    
+
     gfx_Begin();
     gfx_SetPalette(imgPalette, sizeof_imgPalette, 0);
     gfx_SetDrawBuffer();
@@ -179,10 +179,10 @@ void cesh_Init(void) {
 
     gfx_FillScreen(BLACK);
     gfx_BlitBuffer();
-    
+
     // Load shell state
     settingsAppvar = ti_Open("CEshSett", "r");
-    
+
     if (settingsAppvar != 0) {
         ti_Read(&user, sizeof(char), USER_PWD_LENGTH, settingsAppvar);
         ti_Read(&pwd, sizeof(char), USER_PWD_LENGTH, settingsAppvar);
@@ -201,7 +201,7 @@ void cesh_Init(void) {
         ti_Write(&sdBoldText, sizeof(bool), 1, settingsAppvar);
         ti_SetArchiveStatus(true, settingsAppvar);
     }
-    
+
     if (sdRetFromPrgm) {
         ti_Read(&sdCursorPos, sizeof(uint16_t), 2, settingsAppvar);
         ti_Read(&sdTextColors, sizeof(uint8_t), 2, settingsAppvar);
@@ -210,16 +210,16 @@ void cesh_Init(void) {
         ti_Read(&sdItalicText, sizeof(bool), 1, settingsAppvar);
         ti_Read(&sdBoldText, sizeof(bool), 1, settingsAppvar);
     }
-        
+
     ti_Close(settingsAppvar);
-    
+
     // Attempt to load screen state
     settingsAppvar = ti_Open("CEshSBuf", "r");
     if (settingsAppvar != 0) {
         ti_Read(&scrBuffer, sizeof(char_styled_t), BUFFER_SIZE, settingsAppvar);
         ti_Close(settingsAppvar);
         ti_Delete("CEshSBuf");
-        
+
         for (i = 0; i < SCR_WIDTH; i++) {
             for (j = 0; j < SCR_HEIGHT; j++) {
                 if (underlineText || italicText || boldText) parse_draw_string("\\e[0m");
@@ -246,13 +246,13 @@ void cesh_Init(void) {
             parse_draw_string("\\e[4m");
         }
     }
-    
+
     // Set colors
     gfx_SetTextBGColor(sdTextColors[1]);
     gfx_SetTextFGColor(sdTextColors[0]);
     gfx_SetColor(sdTextColors[0]);
     fontlib_SetColors(sdTextColors[0], sdTextColors[1]);
-    
+
     fontlib_SetCursorPosition(sdCursorPos[0], sdCursorPos[1]);
 
     strcpy(path, "/");
@@ -261,53 +261,53 @@ void cesh_Init(void) {
 
 // First time setup
 void cesh_Setup(void) {
-    
+
     uint8_t i;
     char pwd_tmp[USER_PWD_LENGTH];
-    
+
     // Get new username
     draw_newline();
     draw_str_update_buf("Please create a default CEsh user account.");
     draw_newline();
     get_user_input("Enter new CEsh username: ", false, 0);
-    
+
     for (i = 0; i < USER_PWD_LENGTH; i++) {
         user[i] = input[i];
     }
-    
+
     do {
         // Get new password
         draw_newline();
         get_user_input("New password: ", true, 0);
-    
+
         for (i = 0; i < USER_PWD_LENGTH; i++) {
             pwd_tmp[i] = input[i];
         }
-    
+
         // Confirm new password
         draw_newline();
         get_user_input("Confirm password: ", true, 0);
         draw_newline();
-    
+
         for (i = 0; i < USER_PWD_LENGTH; i++) {
             pwd[i] = input[i];
         }
-        
+
         if (strcmp(pwd_tmp, pwd)) {
             draw_str_update_buf("Passwords do not match!");
         }
-        
+
     } while (strcmp(pwd_tmp, pwd));
-    
+
     // Store in appvar
     settingsAppvar = ti_Open("CEshSett", "r+");
     ti_Write(&user, sizeof(char), USER_PWD_LENGTH, settingsAppvar);
     ti_Write(&pwd, sizeof(char), USER_PWD_LENGTH, settingsAppvar);
     ti_SetArchiveStatus(true, settingsAppvar);
     ti_Close(settingsAppvar);
-    
+
     settingsAppvarExists = true;
-    
+
     draw_str_update_buf("User account created successfully!");
     draw_newline();
     draw_newline();
@@ -333,24 +333,24 @@ void cesh_Shell(void) {
         fontlib_SetForegroundColor(temp);
         draw_newline();
         draw_newline();
-    
+
         if (!settingsAppvarExists) {
             cesh_Setup();
             fts = true;
         }
-        
+
         // Login & password prompt
         do {
             draw_str_update_buf(calcName);
             get_user_input(" login: ", false, (strlen(calcName) * FONT_WIDTH) + SCR_OFFSET_X);
         } while (strcmp(input, user));
-        
+
         draw_newline();
-        
+
         do {
             get_user_input("Password: ", true, 0);
         } while (strcmp(input, pwd));
-    
+
         // Store date and time
         boot_GetDate(&day, &mon, &yr);
         boot_GetTime(&sec, &min, &hr);
@@ -360,13 +360,13 @@ void cesh_Shell(void) {
         dateTime[3] = (uint16_t)hr;
         dateTime[4] = (uint16_t)min;
         dateTime[5] = (uint16_t)sec;
-        
+
         // Get day of week
         dateTime[6] = GET_DATE_OF_WEEK;
-        
+
         settingsAppvar = ti_Open("CEshSett", "r+");
         ti_Seek((2 * USER_PWD_LENGTH) + 7, SEEK_SET, settingsAppvar); // Go to correct location in settings appvar
-    
+
         // Read last login date
         if (fts) {
             for (i = 0; i < 7; i++) {
@@ -378,12 +378,12 @@ void cesh_Shell(void) {
             ti_Seek(sizeof(uint16_t) * -7, SEEK_CUR, settingsAppvar);
             lastLoginHappened = true;
         }
-        
+
         ti_Write(&dateTime, sizeof(uint16_t), 7, settingsAppvar); // Write current login date
-        
+
         ti_SetArchiveStatus(true, settingsAppvar);
         ti_Close(settingsAppvar);
-    
+
         // Startup info
         if (lastLoginHappened) {
             draw_newline();
@@ -403,7 +403,7 @@ void cesh_Shell(void) {
             draw_int_update_buf(dateTimeTemp[0], 4);
             draw_newline();
         }
-        
+
         draw_newline();
         draw_str_update_buf("The programs included with the CE shell are free");
         draw_newline();
@@ -450,7 +450,7 @@ void cesh_Shell(void) {
 // End program
 void cesh_End(void) {
     gfx_End();
-    
+
     // Mark shell as exited
     sdRetFromPrgm = false;
     settingsAppvar = ti_Open("CEshSett", "r+");
@@ -458,7 +458,7 @@ void cesh_End(void) {
     ti_Write(&sdRetFromPrgm, sizeof(bool), 1, settingsAppvar);
     ti_SetArchiveStatus(true, settingsAppvar);
     ti_Close(settingsAppvar);
-    
+
     exit(0);
 }
 
@@ -471,9 +471,9 @@ void parse_user_input(void) {
     uint8_t numargs = 1;
     uint8_t *arglocs = malloc(1);
     bool inQuotes = false;
-    
+
     arglocs[0] = 0; // Pre-fill location of command name, as it's always 0
-    
+
     // Pre-search input to define argument delimiters and remove quotes
     for (i = 0; i < INPUT_LENGTH; i++) {
         if ((input[i] == '"') || (input[i] == '\'')) {
@@ -490,7 +490,7 @@ void parse_user_input(void) {
             input[i] = 2;
         }
     }
-    
+
     // Split input into args
     ptr = strtok(input, "\2");
     while (ptr != NULL) {
@@ -508,26 +508,26 @@ void parse_user_input(void) {
 
     // Command: echo
     if (!strcmp(input, "echo")) {
-        
+
         startOnNewLine = true;
         draw_newline();
-        
+
         for (i = 1; i < numargs; i++) {
             parse_draw_string(&input[arglocs[i]]);
             if (i < numargs - 1) {
                 draw_str_update_buf(" ");
             }
         }
-        
+
     // Prevent shell running itself
     } else if (!strcmp(input, "./CESH")) {
-        
+
         draw_newline();
         draw_str_update_buf("No");
-        
+
     // Debug command (remove in release)
     } else if (!strcmp(input, "dbg")) {
-        
+
         startOnNewLine = true;
         draw_newline();
         for (i = 0; i < numargs; i++) {
@@ -536,13 +536,13 @@ void parse_user_input(void) {
             draw_str_update_buf(&input[arglocs[i]]);
             parse_draw_string("\\n");
         }
-        
+
     // Command: .
     } else if (input[0] == '.') {
-        
+
         if (input[1] == '/') {
             retval = run_prgm(&input[2], "null");
-            
+
             draw_newline();
             draw_str_update_buf("Error ");
             draw_int_update_buf(retval, 2);
@@ -599,7 +599,7 @@ void get_user_input(const char *msg, const bool maskInput, const uint16_t offset
 
         // Blink Cursor
         if (j == 0) { // Update screen output w/o cursor
-        
+
             // Loop backwards through wrapped lines and clear everything back to original X offset until redraw
             for (i = fontlib_GetCursorY(); i >= cursorY; i = i - FONT_HEIGHT) {
                 fontlib_Home();
@@ -649,9 +649,9 @@ void get_user_input(const char *msg, const bool maskInput, const uint16_t offset
             } else {
                 draw_str_update_buf(input);
             }
-            
+
             gfx_BlitBuffer();
-        
+
         } else if (j == 1000) { // Reset j once cursor has flashed one time
             j = -1;
         }
@@ -660,7 +660,7 @@ void get_user_input(const char *msg, const bool maskInput, const uint16_t offset
 
         // Update output
         if (key && !prevkey) {
-            
+
             switch (kb_Data[1]) {
                 case kb_2nd:
                     if ((textIndex == 2) || (textIndex == 3)) {
@@ -1247,7 +1247,7 @@ void get_user_input(const char *msg, const bool maskInput, const uint16_t offset
                 if (fontlib_GetCursorY() == (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y)) {
                     cursorY = cursorY - FONT_HEIGHT;
                     fontlib_ScrollWindowDown(); // Manually scroll window
-                    
+
                     // Scroll the contents of the screen buffer
                     memmove(&scrBuffer[0][0], &scrBuffer[0][1], (BUFFER_SIZE - SCR_WIDTH) * sizeof(char_styled_t));
                     for (k = 0; k < SCR_WIDTH; k++) {
@@ -1258,11 +1258,11 @@ void get_user_input(const char *msg, const bool maskInput, const uint16_t offset
                         scrBuffer[k][SCR_HEIGHT - 1].fg_col = WHITE;
                         scrBuffer[k][SCR_HEIGHT - 1].bg_col = BLACK;
                     }
-                    
+
                     // Erase the bottom line
                     gfx_SetColor(BLACK);
                     gfx_FillRectangle(SCR_OFFSET_X, (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y), SCR_WIDTH_P, FONT_HEIGHT);
-                    
+
                     fontlib_SetCursorPosition(SCR_OFFSET_X, (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y));
                 }
             }
@@ -1299,7 +1299,7 @@ void get_user_input(const char *msg, const bool maskInput, const uint16_t offset
         }
 
         prevkey = key;
-        
+
     } while (!done);
 
     /* When user hits enter, update screen output without cursor */
@@ -1349,7 +1349,7 @@ void parse_draw_string(const char *string) {
 
     // Begin displaying and parsing actual string
     for (i = 0; i < INPUT_LENGTH; i++) {
-        
+
         // Parse backslash-escaped characters
         if (parserData[i] == '\\') {
 
@@ -1360,7 +1360,7 @@ void parse_draw_string(const char *string) {
 
             // Parse \b
             if (parserData[i + 1] == 'b') {
-                
+
                 parserData[i - 1] = 0; // Delete backspaced character
 
                 // Shift string 3 chars to the left to remove backspaced character and \b
@@ -1382,21 +1382,21 @@ void parse_draw_string(const char *string) {
                 displayNextChar = false;
                 i -= 2; // Move i back as if deleted character never existed
             }
-            
+
             // Parse \n
             if (parserData[i + 1] == 'n') {
                 draw_newline();
                 displayNextChar = false;
                 i++;
             }
-            
+
             // Parse \r
             if (parserData[i + 1] == 'r') {
                 fontlib_SetCursorPosition(SCR_OFFSET_X, fontlib_GetCursorY());
                 displayNextChar = false;
                 i++;
             }
-            
+
             // Parse \t
             if (parserData[i + 1] == 't') {
                 draw_str_update_buf("    ");
@@ -1407,34 +1407,34 @@ void parse_draw_string(const char *string) {
                 displayNextChar = false;
                 i++;
             }
-            
+
             // Parse \𝘯𝘯𝘯
             if ((parserData[i + 1] > 47) && (parserData[i + 1] < 56)) {
-                
+
                 // Increment m until the next character is not an octal digit or the sequence length is 3 digits
                 for (m = i + 1; (parserData[m] > 47) && (parserData[m] < 56) && (m < i + 4); m++);
-                
+
                 // m now equals the length of the sequence
                 m -= i + 1;
-                
+
                 // Replace last character with new character
                 parserData[i + m] = str_to_num(&parserData[i + 1], m, 8);
-       
+
                 i += m;
             }
-            
+
             // Parse \x𝘩𝘩
             if (parserData[i + 1] == 'x') {
-                
+
                 // Increment m until the next character is not a hex digit or the sequence length is 2 digits
                 for (m = i + 2; (((parserData[m] > 47) && (parserData[m] < 58)) || ((parserData[m] > 64) && (parserData[m] < 71)) || ((parserData[m] > 96) && (parserData[m] < 103))) && (m < i + 4); m++);
-                
+
                 // m now equals the length of the sequence
                 m -= i + 2;
-                
+
                 // Replace last character with new character
                 parserData[i + m + 1] = str_to_num(&parserData[i + 2], m, 16);
-                
+
                 i += m + 1;
             }
 
@@ -1470,22 +1470,22 @@ void parse_draw_string(const char *string) {
 
                 // Directly set cursor position
                 if ((parserData[j] == 'f') || (parserData[j] == 'H')) {
-                    
+
                     // Move cursor to top-left (0,0)
                     if (parserData[j - 1] == '[') {
                         x = y = 0;
                     }
-                    
+
                     // Store index of ';' in m
                     for (m = i + 3; m < j; m++) {
                         if (parserData[m] == ';')
                             break;
                     }
-                    
+
                     // Retrieve & set cursor position
                     x = str_to_num(&parserData[m + 1], j - (m + 1), 10);
                     y = str_to_num(&parserData[i + 3], m - (i + 3), 10);
-                    
+
                     fontlib_SetCursorPosition((x * FONT_WIDTH) + SCR_OFFSET_X, (y * FONT_HEIGHT) + SCR_OFFSET_Y);
                 }
 
@@ -1689,23 +1689,23 @@ void parse_draw_string(const char *string) {
 
 // Draw a string and update the screen buffer
 void draw_str_update_buf(const char *string) {
-    
+
     uint16_t i, j;
     uint8_t x, y;
     char temp[2] = {0, 0};
-    
+
     // Loop through input
     for (i = 0; i < INPUT_LENGTH; i++) {
         if (string[i] == 0) break;
-        
+
         // Get x & y coords
         x = (fontlib_GetCursorX() - SCR_OFFSET_X) / FONT_WIDTH;
         y = (fontlib_GetCursorY() - SCR_OFFSET_Y) / FONT_HEIGHT;
-        
+
         // If the screen should scroll...
         if (shouldScroll) {
             fontlib_ScrollWindowDown(); // Manually scroll window
-            
+
             // Scroll the contents of the screen buffer
             memmove(&scrBuffer[0][0], &scrBuffer[0][1], (BUFFER_SIZE - SCR_WIDTH) * sizeof(char_styled_t));
             for (j = 0; j < SCR_WIDTH; j++) {
@@ -1716,27 +1716,27 @@ void draw_str_update_buf(const char *string) {
                 scrBuffer[j][SCR_HEIGHT - 1].fg_col = WHITE;
                 scrBuffer[j][SCR_HEIGHT - 1].bg_col = BLACK;
             }
-            
+
             // Erase the bottom line
             gfx_SetColor(BLACK);
             gfx_FillRectangle(SCR_OFFSET_X, (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y), SCR_WIDTH_P, FONT_HEIGHT);
-            
+
             fontlib_SetCursorPosition(SCR_OFFSET_X, (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y));
-            
+
             x = 0;
             y = SCR_HEIGHT - 1;
         }
-        
+
         shouldScroll = ((x == SCR_WIDTH - 1) && (y == SCR_HEIGHT - 1));
-        
+
         temp[0] = string[i];
         fontlib_DrawString(temp);
-        
+
         if (underlineText) {
             gfx_SetColor(fontlib_GetForegroundColor());
             gfx_HorizLine(fontlib_GetCursorX() - FONT_WIDTH, fontlib_GetCursorY() + FONT_HEIGHT - 2, FONT_WIDTH);
         }
-        
+
         scrBuffer[x][y].character = string[i];
         scrBuffer[x][y].bold = boldText;
         scrBuffer[x][y].italic = italicText;
@@ -1751,9 +1751,9 @@ void draw_int_update_buf(int number, const uint8_t length) {
 
     char str[length + 1];
     uint8_t i, len;
-    
+
     snprintf(str, length + 1, "%d", number); // Convert integer to string
-    
+
     // Pad with 0s if necessary
     len = strlen(str);
     if (len < length) {
@@ -1762,18 +1762,18 @@ void draw_int_update_buf(int number, const uint8_t length) {
             str[i] = '0';
         }
     }
-    
+
     draw_str_update_buf(str);
 }
 
 // Draw a newline, accounting for scrolling
 void draw_newline(void) {
-    
+
     uint8_t j, y = fontlib_GetCursorY();
-    
+
     if (((y - SCR_OFFSET_Y) / FONT_HEIGHT) == SCR_HEIGHT - 1) {
         fontlib_ScrollWindowDown(); // Manually scroll window
-        
+
         // Scroll the contents of the screen buffer
         memmove(&scrBuffer[0][0], &scrBuffer[0][1], (BUFFER_SIZE - SCR_WIDTH) * sizeof(char_styled_t));
         for (j = 0; j < SCR_WIDTH; j++) {
@@ -1784,11 +1784,11 @@ void draw_newline(void) {
             scrBuffer[j][SCR_HEIGHT - 1].fg_col = WHITE;
             scrBuffer[j][SCR_HEIGHT - 1].bg_col = BLACK;
         }
-        
+
         // Erase the bottom line
         gfx_SetColor(BLACK);
         gfx_FillRectangle(SCR_OFFSET_X, (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y), SCR_WIDTH_P, FONT_HEIGHT);
-        
+
         fontlib_SetCursorPosition(SCR_OFFSET_X, y);
     } else {
         fontlib_Newline();
@@ -1812,16 +1812,16 @@ uint8_t str_to_num(const char *string, const uint8_t length, const uint8_t base)
 
 // Saves the shell state and runs a program
 int run_prgm(char *prgm, char *args) {
-    
+
     int ret;
-    
+
     // Make sure program actually exists
     settingsAppvar = ti_OpenVar(prgm, "r", TI_PRGM_TYPE);
     if (settingsAppvar == 0) {
         return -1;
     }
     ti_Close(settingsAppvar);
-    
+
     // Set save state variables
     sdRetFromPrgm = true;
     sdCursorPos[0] = fontlib_GetCursorX();
@@ -1831,10 +1831,10 @@ int run_prgm(char *prgm, char *args) {
     sdUnderlineText = underlineText;
     sdItalicText = italicText;
     sdBoldText = boldText;
-    
+
     // Save shell state
     settingsAppvar = ti_Open("CEshSett", "r+");
-    
+
     ti_Seek(sizeof(char) * (2 * USER_PWD_LENGTH), SEEK_SET, settingsAppvar);
     ti_Write(&sdRetFromPrgm, sizeof(bool), 1, settingsAppvar);
     ti_Write(&sdCursorPos, sizeof(uint16_t), 2, settingsAppvar);
@@ -1843,20 +1843,20 @@ int run_prgm(char *prgm, char *args) {
     ti_Write(&sdUnderlineText, sizeof(bool), 1, settingsAppvar);
     ti_Write(&sdItalicText, sizeof(bool), 1, settingsAppvar);
     ti_Write(&sdBoldText, sizeof(bool), 1, settingsAppvar);
-    
+
     ti_SetArchiveStatus(true, settingsAppvar);
     ti_Close(settingsAppvar);
-    
+
     // Save screen state
     settingsAppvar = ti_Open("CEshSBuf", "w+");
     ti_Write(&scrBuffer, sizeof(char_styled_t), BUFFER_SIZE, settingsAppvar);
     ti_SetArchiveStatus(true, settingsAppvar);
     ti_Close(settingsAppvar);
-    
+
     gfx_End();
-    
+
     ret = os_RunPrgm(prgm, NULL, 0, (os_runprgm_callback_t)main);
     cesh_Init();
-    
+
     return ret;
 }
