@@ -28,6 +28,43 @@
 #include "gfx/gfx.h"
 #include "fonts/fonts.h"
 
+/* Macro definitions */
+#define BLACK  0x00
+#define RED    0x01
+#define GREEN  0x02
+#define YELLOW 0x03
+#define BLUE   0x04
+#define PURPLE 0x05
+#define CYAN   0x06
+#define WHITE  0x07
+
+#define BRIGHT_BLACK  0x08
+#define BRIGHT_RED    0x09
+#define BRIGHT_GREEN  0x0A
+#define BRIGHT_YELLOW 0x0B
+#define BRIGHT_BLUE   0x0C
+#define BRIGHT_PURPLE 0x0D
+#define BRIGHT_CYAN   0x0E
+#define BRIGHT_WHITE  0x0F
+
+#define SCR_WIDTH   52
+#define SCR_HEIGHT  19
+#define FONT_WIDTH  6
+#define FONT_HEIGHT 12
+
+#define SCR_WIDTH_P   316
+#define SCR_HEIGHT_P  236
+#define SCR_OFFSET_X 2
+#define SCR_OFFSET_Y 2
+
+#define INPUT_LENGTH    257
+#define PATH_LENGTH     257
+#define USER_PWD_LENGTH 33
+
+#define BUFFER_SIZE (SCR_WIDTH * SCR_HEIGHT)
+
+#define GET_DATE_OF_WEEK ((day += mon < 3 ? yr-- : yr - 2, 23*mon/9 + day + 4 + yr/4- yr/100 + yr/400)%7)
+
 
 /* Structure definitions */
 typedef struct __char_styled__ {
@@ -56,28 +93,28 @@ int run_prgm(char *prgm, char *args);
 
 
 /* Variable declarations */
-const char *pCalcName = (char *)0x3B000E;
-const char cursors[4] = {129, 130, 128, 95};
-const char dowNames[7][4] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
-const char monNames[12][4] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+const char *P_CALC_NAME = (char *)0x3B000E;
+const char CURSORS[4] = {129, 130, 128, 95};
+const char DOW_NAMES[7][4] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
+const char MON_NAMES[12][4] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 
-char input[257];
-char parserData[257];
-char path[257];
+char input[INPUT_LENGTH];
+char parserData[INPUT_LENGTH];
+char path[PATH_LENGTH];
 char calcName[25];
 uint8_t textIndex = 0;
 
-uint16_t cursorPos[2] = {2, 2};
+uint16_t cursorPos[2] = {SCR_OFFSET_X, SCR_OFFSET_Y};
 bool startOnNewLine = true;
 bool underlineText = false;
 bool italicText = false;
 bool boldText = false;
 
-char user[33];
-char pwd[33];
+char user[USER_PWD_LENGTH];
+char pwd[USER_PWD_LENGTH];
 bool sdRetFromPrgm = false;
-uint16_t sdCursorPos[2] = {2, 2};
-uint8_t sdTextColors[2] = {7, 0};
+uint16_t sdCursorPos[2] = {SCR_OFFSET_X, SCR_OFFSET_Y};
+uint8_t sdTextColors[2] = {WHITE, BLACK};
 bool sdUnderlineText = false;
 bool sdItalicText = false;
 bool sdBoldText = false;
@@ -88,7 +125,7 @@ bool settingsAppvarExists = true;
 uint16_t dateTime[7];
 bool lastLoginHappened = false;
 
-char_styled_t scrBuffer[52][19];
+char_styled_t scrBuffer[SCR_WIDTH][SCR_HEIGHT];
 bool shouldScroll;
 
 
@@ -109,20 +146,20 @@ void cesh_Init(void) {
     uint8_t i, j;
     
     // Empty user/pwd variables
-    for (i = 0; i <= 32; i++) {
+    for (i = 0; i < USER_PWD_LENGTH; i++) {
         user[i] = 0;
         pwd[i] = 0;
     }
     
     // Empty screen buffer
-    for (i = 0; i < 52; i++) {
-        for (j = 0; j < 19; j++) {
+    for (i = 0; i < SCR_WIDTH; i++) {
+        for (j = 0; j < SCR_HEIGHT; j++) {
             scrBuffer[i][j].character = ' ';
             scrBuffer[i][j].bold = false;
             scrBuffer[i][j].italic = false;
             scrBuffer[i][j].underline = false;
-            scrBuffer[i][j].fg_col = 7;
-            scrBuffer[i][j].bg_col = 0;
+            scrBuffer[i][j].fg_col = WHITE;
+            scrBuffer[i][j].bg_col = BLACK;
         }
     }
 
@@ -136,25 +173,25 @@ void cesh_Init(void) {
     fontlib_SetFont(terminus_font, 0);
     fontlib_SetTransparency(false);
     fontlib_SetLineSpacing(0, 0);
-    fontlib_SetWindow(2, 2, 316, 236);
+    fontlib_SetWindow(SCR_OFFSET_X, SCR_OFFSET_Y, SCR_WIDTH_P, SCR_HEIGHT_P);
     fontlib_SetNewlineOptions(FONTLIB_ENABLE_AUTO_WRAP);// | FONTLIB_AUTO_SCROLL);
     fontlib_ClearWindow();
 
-    gfx_FillScreen(0);
+    gfx_FillScreen(BLACK);
     gfx_BlitBuffer();
     
     // Load shell state
     settingsAppvar = ti_Open("CEshSett", "r");
     
     if (settingsAppvar != 0) {
-        ti_Read(&user, sizeof(char), 33, settingsAppvar);
-        ti_Read(&pwd, sizeof(char), 33, settingsAppvar);
+        ti_Read(&user, sizeof(char), USER_PWD_LENGTH, settingsAppvar);
+        ti_Read(&pwd, sizeof(char), USER_PWD_LENGTH, settingsAppvar);
         ti_Read(&sdRetFromPrgm, sizeof(bool), 1, settingsAppvar);
     } else {
         settingsAppvarExists = false;
         settingsAppvar = ti_Open("CEshSett", "w+");
-        ti_Write(&user, sizeof(char), 33, settingsAppvar);
-        ti_Write(&pwd, sizeof(char), 33, settingsAppvar);
+        ti_Write(&user, sizeof(char), USER_PWD_LENGTH, settingsAppvar);
+        ti_Write(&pwd, sizeof(char), USER_PWD_LENGTH, settingsAppvar);
         ti_Write(&sdRetFromPrgm, sizeof(bool), 1, settingsAppvar);
         ti_Write(&sdCursorPos, sizeof(uint16_t), 2, settingsAppvar);
         ti_Write(&sdTextColors, sizeof(uint8_t), 2, settingsAppvar);
@@ -179,22 +216,22 @@ void cesh_Init(void) {
     // Attempt to load screen state
     settingsAppvar = ti_Open("CEshSBuf", "r");
     if (settingsAppvar != 0) {
-        ti_Read(&scrBuffer, sizeof(char_styled_t), 988, settingsAppvar);
+        ti_Read(&scrBuffer, sizeof(char_styled_t), BUFFER_SIZE, settingsAppvar);
         ti_Close(settingsAppvar);
         ti_Delete("CEshSBuf");
         
-        for (i = 0; i < 52; i++) {
-            for (j = 0; j < 19; j++) {
+        for (i = 0; i < SCR_WIDTH; i++) {
+            for (j = 0; j < SCR_HEIGHT; j++) {
                 if (underlineText || italicText || boldText) parse_draw_string("\\e[0m");
                 if (scrBuffer[i][j].bold) parse_draw_string("\\e[1m");
                 if (scrBuffer[i][j].italic) parse_draw_string("\\e[3m");
                 if (scrBuffer[i][j].underline) parse_draw_string("\\e[4m");
                 fontlib_SetColors(scrBuffer[i][j].fg_col, scrBuffer[i][j].bg_col);
-                fontlib_SetCursorPosition(2 + (i * 6), 2 + (j * 12));
+                fontlib_SetCursorPosition(SCR_OFFSET_X + (i * FONT_WIDTH), SCR_OFFSET_Y + (j * FONT_HEIGHT));
                 fontlib_DrawGlyph(scrBuffer[i][j].character);
                 if (underlineText) {
                     gfx_SetColor(fontlib_GetForegroundColor());
-                    gfx_HorizLine(fontlib_GetCursorX() - 6, fontlib_GetCursorY() + 10, 6);
+                    gfx_HorizLine(fontlib_GetCursorX() - FONT_WIDTH, fontlib_GetCursorY() + FONT_HEIGHT - 2, FONT_WIDTH);
                 }
             }
         }
@@ -219,14 +256,14 @@ void cesh_Init(void) {
     fontlib_SetCursorPosition(sdCursorPos[0], sdCursorPos[1]);
 
     strcpy(path, "/");
-    strcpy(calcName, pCalcName);
+    strcpy(calcName, P_CALC_NAME);
 }
 
 // First time setup
 void cesh_Setup(void) {
     
     uint8_t i;
-    char pwd_tmp[33];
+    char pwd_tmp[USER_PWD_LENGTH];
     
     // Get new username
     draw_newline();
@@ -234,7 +271,7 @@ void cesh_Setup(void) {
     draw_newline();
     get_user_input("Enter new CEsh username: ", false, 0);
     
-    for (i = 0; i <= 32; i++) {
+    for (i = 0; i < USER_PWD_LENGTH; i++) {
         user[i] = input[i];
     }
     
@@ -243,7 +280,7 @@ void cesh_Setup(void) {
         draw_newline();
         get_user_input("New password: ", true, 0);
     
-        for (i = 0; i <= 32; i++) {
+        for (i = 0; i < USER_PWD_LENGTH; i++) {
             pwd_tmp[i] = input[i];
         }
     
@@ -252,7 +289,7 @@ void cesh_Setup(void) {
         get_user_input("Confirm password: ", true, 0);
         draw_newline();
     
-        for (i = 0; i <= 32; i++) {
+        for (i = 0; i < USER_PWD_LENGTH; i++) {
             pwd[i] = input[i];
         }
         
@@ -264,8 +301,8 @@ void cesh_Setup(void) {
     
     // Store in appvar
     settingsAppvar = ti_Open("CEshSett", "r+");
-    ti_Write(&user, sizeof(char), 33, settingsAppvar);
-    ti_Write(&pwd, sizeof(char), 33, settingsAppvar);
+    ti_Write(&user, sizeof(char), USER_PWD_LENGTH, settingsAppvar);
+    ti_Write(&pwd, sizeof(char), USER_PWD_LENGTH, settingsAppvar);
     ti_SetArchiveStatus(true, settingsAppvar);
     ti_Close(settingsAppvar);
     
@@ -281,7 +318,7 @@ void cesh_Shell(void) {
 
     uint8_t temp;
     uint8_t i;
-    uint8_t day, mon, sec, min, hr, dow;
+    uint8_t day, mon, sec, min, hr;
     uint16_t yr;
     uint16_t dateTimeTemp[7];
     bool fts = false;
@@ -291,7 +328,7 @@ void cesh_Shell(void) {
         draw_str_update_buf("CEsh v0.1a - The TI-84 Plus CE terminal");
         draw_newline();
         temp = fontlib_GetForegroundColor();
-        fontlib_SetForegroundColor(0x08);
+        fontlib_SetForegroundColor(BRIGHT_BLACK);
         draw_str_update_buf("(Press [2nd]+[mode] to exit)");
         fontlib_SetForegroundColor(temp);
         draw_newline();
@@ -305,7 +342,7 @@ void cesh_Shell(void) {
         // Login & password prompt
         do {
             draw_str_update_buf(calcName);
-            get_user_input(" login: ", false, (strlen(calcName) * 6) + 2);
+            get_user_input(" login: ", false, (strlen(calcName) * FONT_WIDTH) + SCR_OFFSET_X);
         } while (strcmp(input, user));
         
         draw_newline();
@@ -325,11 +362,10 @@ void cesh_Shell(void) {
         dateTime[5] = (uint16_t)sec;
         
         // Get day of week
-        dow = (day += mon < 3 ? yr-- : yr - 2, 23*mon/9 + day + 4 + yr/4- yr/100 + yr/400)%7;
-        dateTime[6] = (uint16_t)dow;
+        dateTime[6] = GET_DATE_OF_WEEK;
         
         settingsAppvar = ti_Open("CEshSett", "r+");
-        ti_Seek(73, SEEK_SET, settingsAppvar); // Go to correct location in settings appvar
+        ti_Seek((2 * USER_PWD_LENGTH) + 7, SEEK_SET, settingsAppvar); // Go to correct location in settings appvar
     
         // Read last login date
         if (fts) {
@@ -352,9 +388,9 @@ void cesh_Shell(void) {
         if (lastLoginHappened) {
             draw_newline();
             draw_str_update_buf("Last login: ");
-            draw_str_update_buf(dowNames[dateTimeTemp[6]]);
+            draw_str_update_buf(DOW_NAMES[dateTimeTemp[6]]);
             draw_str_update_buf(" ");
-            draw_str_update_buf(monNames[dateTimeTemp[1] - 1]);
+            draw_str_update_buf(MON_NAMES[dateTimeTemp[1] - 1]);
             draw_str_update_buf(" ");
             draw_int_update_buf(dateTimeTemp[2], 2);
             draw_str_update_buf(" ");
@@ -395,13 +431,13 @@ void cesh_Shell(void) {
 
         // Display input prompt
         temp = fontlib_GetForegroundColor();
-        fontlib_SetForegroundColor(0x02);
+        fontlib_SetForegroundColor(GREEN);
         draw_str_update_buf(user);
         draw_str_update_buf("@");
         draw_str_update_buf(calcName);
         fontlib_SetForegroundColor(temp);
         draw_str_update_buf(":");
-        fontlib_SetForegroundColor(0x0C);
+        fontlib_SetForegroundColor(BRIGHT_BLUE);
         draw_str_update_buf(path);
         fontlib_SetForegroundColor(temp);
 
@@ -418,7 +454,7 @@ void cesh_End(void) {
     // Mark shell as exited
     sdRetFromPrgm = false;
     settingsAppvar = ti_Open("CEshSett", "r+");
-    ti_Seek(sizeof(char) * 66, SEEK_SET, settingsAppvar);
+    ti_Seek(2 * USER_PWD_LENGTH, SEEK_SET, settingsAppvar);
     ti_Write(&sdRetFromPrgm, sizeof(bool), 1, settingsAppvar);
     ti_SetArchiveStatus(true, settingsAppvar);
     ti_Close(settingsAppvar);
@@ -439,7 +475,7 @@ void parse_user_input(void) {
     arglocs[0] = 0; // Pre-fill location of command name, as it's always 0
     
     // Pre-search input to define argument delimiters and remove quotes
-    for (i = 0; i < 256; i++) {
+    for (i = 0; i < INPUT_LENGTH; i++) {
         if ((input[i] == '"') || (input[i] == '\'')) {
             if (i > 0) {
                 if (input[i - 1] != '\\') {
@@ -546,13 +582,13 @@ void get_user_input(const char *msg, const bool maskInput, const uint16_t offset
     char temp[2] = {0, 0};
 
     // Empty output
-    for (i = 0; i <= 256; i++) {
+    for (i = 0; i <= INPUT_LENGTH; i++) {
         input[i] = 0;
     }
 
     textIndex = 3; // Reset cursor state
 
-    lineWrap = offsetX + 6; // Initialize lineWrap with current X offset + cursor width
+    lineWrap = offsetX + FONT_WIDTH; // Initialize lineWrap with current X offset + cursor width
 
     gfx_BlitBuffer();
 
@@ -565,7 +601,7 @@ void get_user_input(const char *msg, const bool maskInput, const uint16_t offset
         if (j == 0) { // Update screen output w/o cursor
         
             // Loop backwards through wrapped lines and clear everything back to original X offset until redraw
-            for (i = fontlib_GetCursorY(); i >= cursorY; i = i - 12) {
+            for (i = fontlib_GetCursorY(); i >= cursorY; i = i - FONT_HEIGHT) {
                 fontlib_Home();
                 if ((i == cursorY) && offsetX) {
                     fontlib_SetCursorPosition(offsetX, fontlib_GetCursorY());
@@ -586,7 +622,7 @@ void get_user_input(const char *msg, const bool maskInput, const uint16_t offset
             }
 
             // Redraw cursor
-            temp[0] = cursors[textIndex];
+            temp[0] = CURSORS[textIndex];
             fontlib_DrawString(temp);
 
             gfx_BlitBuffer();
@@ -594,7 +630,7 @@ void get_user_input(const char *msg, const bool maskInput, const uint16_t offset
         } else if (j == 500) { // Update screen output w/ cursor
 
             // Loop backwards through wrapped lines and clear everything back to original X offset until redraw
-            for (i = fontlib_GetCursorY(); i >= cursorY; i = i - 12) {
+            for (i = fontlib_GetCursorY(); i >= cursorY; i = i - FONT_HEIGHT) {
                 fontlib_Home();
                 if ((i == cursorY) && offsetX) {
                     fontlib_SetCursorPosition(offsetX, fontlib_GetCursorY());
@@ -1206,33 +1242,33 @@ void get_user_input(const char *msg, const bool maskInput, const uint16_t offset
 
             // Update lineWrap and cursorY
 
-            if (lineWrap == 308) {
+            if (lineWrap == (((SCR_WIDTH - 1) * FONT_WIDTH) + SCR_OFFSET_X)) {
                 lineWrap = 0;
-                if (fontlib_GetCursorY() == 218) {
-                    cursorY = cursorY - 12;
+                if (fontlib_GetCursorY() == (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y)) {
+                    cursorY = cursorY - FONT_HEIGHT;
                     fontlib_ScrollWindowDown(); // Manually scroll window
                     
                     // Scroll the contents of the screen buffer
-                    memmove(&scrBuffer[0][0], &scrBuffer[0][1], 936 * sizeof(char_styled_t));
-                    for (k = 0; k < 52; k++) {
-                        scrBuffer[k][18].character = ' ';
-                        scrBuffer[k][18].bold = false;
-                        scrBuffer[k][18].italic = false;
-                        scrBuffer[k][18].underline = false;
-                        scrBuffer[k][18].fg_col = 7;
-                        scrBuffer[k][18].bg_col = 0;
+                    memmove(&scrBuffer[0][0], &scrBuffer[0][1], (BUFFER_SIZE - SCR_WIDTH) * sizeof(char_styled_t));
+                    for (k = 0; k < SCR_WIDTH; k++) {
+                        scrBuffer[k][SCR_HEIGHT - 1].character = ' ';
+                        scrBuffer[k][SCR_HEIGHT - 1].bold = false;
+                        scrBuffer[k][SCR_HEIGHT - 1].italic = false;
+                        scrBuffer[k][SCR_HEIGHT - 1].underline = false;
+                        scrBuffer[k][SCR_HEIGHT - 1].fg_col = WHITE;
+                        scrBuffer[k][SCR_HEIGHT - 1].bg_col = BLACK;
                     }
                     
                     // Erase the bottom line
-                    gfx_SetColor(0);
-                    gfx_FillRectangle(0, 218, 320, 22);
+                    gfx_SetColor(BLACK);
+                    gfx_FillRectangle(SCR_OFFSET_X, (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y), SCR_WIDTH_P, FONT_HEIGHT);
                     
-                    fontlib_SetCursorPosition(2, 218);
+                    fontlib_SetCursorPosition(SCR_OFFSET_X, (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y));
                 }
             }
 
             // Loop backwards through wrapped lines and clear everything back to original X offset until redraw
-            for (i = fontlib_GetCursorY(); i >= cursorY; i = i - 12) {
+            for (i = fontlib_GetCursorY(); i >= cursorY; i = i - FONT_HEIGHT) {
                 fontlib_Home();
                 if ((i == cursorY) && offsetX) {
                     fontlib_SetCursorPosition(offsetX, fontlib_GetCursorY());
@@ -1254,7 +1290,7 @@ void get_user_input(const char *msg, const bool maskInput, const uint16_t offset
 
             // Redraw cursor
             if (j < 500) {
-                temp[0] = cursors[textIndex];
+                temp[0] = CURSORS[textIndex];
                 fontlib_DrawString(temp);
             }
 
@@ -1269,7 +1305,7 @@ void get_user_input(const char *msg, const bool maskInput, const uint16_t offset
     /* When user hits enter, update screen output without cursor */
 
     // Loop backwards through wrapped lines and clear everything back to original X offset until redraw
-    for (i = fontlib_GetCursorY(); i >= cursorY; i = i - 12) {
+    for (i = fontlib_GetCursorY(); i >= cursorY; i = i - FONT_HEIGHT) {
         fontlib_Home();
         if ((i == cursorY) && offsetX) {
             fontlib_SetCursorPosition(offsetX, fontlib_GetCursorY());
@@ -1297,15 +1333,13 @@ void parse_draw_string(const char *string) {
 
     uint16_t i, j, x;
     uint8_t k, l, m, y;
-    char temp[2];
+    char temp[2] = {0, 0};
     bool displayNextChar, fGcolorHasBeenSet, bGcolorHasBeenSet;
 
     // Empty input
-    for (i = 0; i <= 256; i++) {
+    for (i = 0; i <= INPUT_LENGTH; i++) {
         parserData[i] = 0;
     }
-
-    temp[1] = 0; // Put null terminator in temp
 
     displayNextChar = true;
     fGcolorHasBeenSet = false;
@@ -1314,7 +1348,7 @@ void parse_draw_string(const char *string) {
     strcpy(parserData, string);
 
     // Begin displaying and parsing actual string
-    for (i = 0; i < 256; i++) {
+    for (i = 0; i < INPUT_LENGTH; i++) {
         
         // Parse backslash-escaped characters
         if (parserData[i] == '\\') {
@@ -1333,16 +1367,16 @@ void parse_draw_string(const char *string) {
                 memmove(&parserData[i - 1], &parserData[i + 2], strlen(&parserData[i + 2]) + 1);
 
                 // Reset cursor position, print a space, and reset again
-                if (fontlib_GetCursorX() == 2) {
-                    fontlib_SetCursorPosition(308, fontlib_GetCursorY() - 12);
+                if (fontlib_GetCursorX() == SCR_OFFSET_X) {
+                    fontlib_SetCursorPosition(((SCR_WIDTH - 1) * FONT_WIDTH) + SCR_OFFSET_X, fontlib_GetCursorY() - FONT_HEIGHT);
                 } else {
-                    fontlib_SetCursorPosition(fontlib_GetCursorX() - 6, fontlib_GetCursorY());
+                    fontlib_SetCursorPosition(fontlib_GetCursorX() - FONT_WIDTH, fontlib_GetCursorY());
                 }
                 draw_str_update_buf(" ");
-                if (fontlib_GetCursorX() == 2) {
-                    fontlib_SetCursorPosition(308, fontlib_GetCursorY() - 12);
+                if (fontlib_GetCursorX() == SCR_OFFSET_X) {
+                    fontlib_SetCursorPosition(((SCR_WIDTH - 1) * FONT_WIDTH) + SCR_OFFSET_X, fontlib_GetCursorY() - FONT_HEIGHT);
                 } else {
-                    fontlib_SetCursorPosition(fontlib_GetCursorX() - 6, fontlib_GetCursorY());
+                    fontlib_SetCursorPosition(fontlib_GetCursorX() - FONT_WIDTH, fontlib_GetCursorY());
                 }
 
                 displayNextChar = false;
@@ -1358,7 +1392,7 @@ void parse_draw_string(const char *string) {
             
             // Parse \r
             if (parserData[i + 1] == 'r') {
-                fontlib_SetCursorPosition(2, fontlib_GetCursorY());
+                fontlib_SetCursorPosition(SCR_OFFSET_X, fontlib_GetCursorY());
                 displayNextChar = false;
                 i++;
             }
@@ -1368,7 +1402,7 @@ void parse_draw_string(const char *string) {
                 draw_str_update_buf("    ");
                 if (underlineText) {
                     gfx_SetColor(fontlib_GetForegroundColor());
-                    gfx_HorizLine(fontlib_GetCursorX() - 6, fontlib_GetCursorY() + 10, 6);
+                    gfx_HorizLine(fontlib_GetCursorX() - FONT_WIDTH, fontlib_GetCursorY() + FONT_HEIGHT - 2, FONT_WIDTH);
                 }
                 displayNextChar = false;
                 i++;
@@ -1410,28 +1444,28 @@ void parse_draw_string(const char *string) {
                 /* Loop through remaining characters until a letter is encountered, then break
                    This leaves j as the index in the array of the first letter in the escape code
                    As the letter in an ANSI escape code is always last, this is the end of the code */
-                for (j = i + 3; j < 256; j++) {
+                for (j = i + 3; j < INPUT_LENGTH; j++) {
                     if (((parserData[j] >= 65) && (parserData[j] <= 90)) || ((parserData[j] >= 97) && (parserData[j] <= 122))) break;
                 }
 
                 // Move cursor up
                 if (parserData[j] == 'A') {
-                    fontlib_SetCursorPosition(fontlib_GetCursorX(), fontlib_GetCursorY() - (str_to_num(&parserData[i + 3], j - (i + 3), 10) * 12));
+                    fontlib_SetCursorPosition(fontlib_GetCursorX(), fontlib_GetCursorY() - (str_to_num(&parserData[i + 3], j - (i + 3), 10) * FONT_HEIGHT));
                 }
 
                 // Move cursor down
                 if (parserData[j] == 'B') {
-                    fontlib_SetCursorPosition(fontlib_GetCursorX(), fontlib_GetCursorY() + (str_to_num(&parserData[i + 3], j - (i + 3), 10) * 12));
+                    fontlib_SetCursorPosition(fontlib_GetCursorX(), fontlib_GetCursorY() + (str_to_num(&parserData[i + 3], j - (i + 3), 10) * FONT_HEIGHT));
                 }
 
                 // Move cursor forward
                 if (parserData[j] == 'C') {
-                    fontlib_SetCursorPosition(fontlib_GetCursorX() + (str_to_num(&parserData[i + 3], j - (i + 3), 10) * 6), fontlib_GetCursorY());
+                    fontlib_SetCursorPosition(fontlib_GetCursorX() + (str_to_num(&parserData[i + 3], j - (i + 3), 10) * FONT_WIDTH), fontlib_GetCursorY());
                 }
 
                 // Move cursor backward
                 if (parserData[j] == 'D') {
-                    fontlib_SetCursorPosition(fontlib_GetCursorX() - (str_to_num(&parserData[i + 3], j - (i + 3), 10) * 6), fontlib_GetCursorY());
+                    fontlib_SetCursorPosition(fontlib_GetCursorX() - (str_to_num(&parserData[i + 3], j - (i + 3), 10) * FONT_WIDTH), fontlib_GetCursorY());
                 }
 
                 // Directly set cursor position
@@ -1452,20 +1486,20 @@ void parse_draw_string(const char *string) {
                     x = str_to_num(&parserData[m + 1], j - (m + 1), 10);
                     y = str_to_num(&parserData[i + 3], m - (i + 3), 10);
                     
-                    fontlib_SetCursorPosition((x * 6) + 2, (y * 12) + 2);
+                    fontlib_SetCursorPosition((x * FONT_WIDTH) + SCR_OFFSET_X, (y * FONT_HEIGHT) + SCR_OFFSET_Y);
                 }
 
                 // Clear screen
                 if ((parserData[j] == 'J') && (parserData[j - 1] == '2')) {
                     fontlib_ClearWindow();
-                    for (x = 0; x < 52; x++) {
-                        for (y = 0; y < 19; y++) {
+                    for (x = 0; x < SCR_WIDTH; x++) {
+                        for (y = 0; y < SCR_HEIGHT; y++) {
                             scrBuffer[x][y].character = ' ';
                             scrBuffer[x][y].bold = false;
                             scrBuffer[x][y].italic = false;
                             scrBuffer[x][y].underline = false;
-                            scrBuffer[x][y].fg_col = 7;
-                            scrBuffer[x][y].bg_col = 0;
+                            scrBuffer[x][y].fg_col = WHITE;
+                            scrBuffer[x][y].bg_col = BLACK;
                         }
                     }
                 }
@@ -1475,13 +1509,13 @@ void parse_draw_string(const char *string) {
                     x = fontlib_GetCursorX();
                     y = fontlib_GetCursorY();
                     fontlib_ClearEOL();
-                    for (k = (x - 2) / 6; k < 52; k++) {
+                    for (k = (x - SCR_OFFSET_X) / FONT_WIDTH; k < SCR_WIDTH; k++) {
                         scrBuffer[k][y].character = ' ';
                         scrBuffer[k][y].bold = false;
                         scrBuffer[k][y].italic = false;
                         scrBuffer[k][y].underline = false;
-                        scrBuffer[k][y].fg_col = 7;
-                        scrBuffer[k][y].bg_col = 0;
+                        scrBuffer[k][y].fg_col = WHITE;
+                        scrBuffer[k][y].bg_col = BLACK;
                     }
                 }
 
@@ -1510,7 +1544,7 @@ void parse_draw_string(const char *string) {
 
                         // Reset text attributes
                         if (((parserData[l - 1] == '[') && (l == j)) || ((parserData[l - 1] == '0') && ((parserData[l - 2] == ';') || (parserData[l - 2] == '[')))) {
-                            fontlib_SetColors(0x07, 0x00);
+                            fontlib_SetColors(WHITE, BLACK);
                             fontlib_SetFont(terminus_font, 0);
                             underlineText = false;
                             italicText = false;
@@ -1568,71 +1602,71 @@ void parse_draw_string(const char *string) {
                         }
 
                         // Colored foreground text
-                        if ((parserData[l - 2] == '3') && (parserData[l - 1] == '0')) {
-                            fontlib_SetForegroundColor(0x00);
+                        if (parserData[l - 2] == '3') {
                             fGcolorHasBeenSet = true;
-                        }
-                        if ((parserData[l - 2] == '3') && (parserData[l - 1] == '1')) {
-                            fontlib_SetForegroundColor(0x01);
-                            fGcolorHasBeenSet = true;
-                        }
-                        if ((parserData[l - 2] == '3') && (parserData[l - 1] == '2')) {
-                            fontlib_SetForegroundColor(0x02);
-                            fGcolorHasBeenSet = true;
-                        }
-                        if ((parserData[l - 2] == '3') && (parserData[l - 1] == '3')) {
-                            fontlib_SetForegroundColor(0x03);
-                            fGcolorHasBeenSet = true;
-                        }
-                        if ((parserData[l - 2] == '3') && (parserData[l - 1] == '4')) {
-                            fontlib_SetForegroundColor(0x04);
-                            fGcolorHasBeenSet = true;
-                        }
-                        if ((parserData[l - 2] == '3') && (parserData[l - 1] == '5')) {
-                            fontlib_SetForegroundColor(0x05);
-                            fGcolorHasBeenSet = true;
-                        }
-                        if ((parserData[l - 2] == '3') && (parserData[l - 1] == '6')) {
-                            fontlib_SetForegroundColor(0x06);
-                            fGcolorHasBeenSet = true;
-                        }
-                        if ((parserData[l - 2] == '3') && (parserData[l - 1] == '7')) {
-                            fontlib_SetForegroundColor(0x07);
-                            fGcolorHasBeenSet = true;
+                            switch (parserData[l - 1]) {
+                                case '0':
+                                    fontlib_SetForegroundColor(BLACK);
+                                    break;
+                                case '1':
+                                    fontlib_SetForegroundColor(RED);
+                                    break;
+                                case '2':
+                                    fontlib_SetForegroundColor(GREEN);
+                                    break;
+                                case '3':
+                                    fontlib_SetForegroundColor(YELLOW);
+                                    break;
+                                case '4':
+                                    fontlib_SetForegroundColor(BLUE);
+                                    break;
+                                case '5':
+                                    fontlib_SetForegroundColor(PURPLE);
+                                    break;
+                                case '6':
+                                    fontlib_SetForegroundColor(CYAN);
+                                    break;
+                                case '7':
+                                    fontlib_SetForegroundColor(WHITE);
+                                    break;
+                                default:
+                                    fGcolorHasBeenSet = false;
+                                    break;
+                            }
                         }
 
                         // Colored background text
-                        if ((parserData[l - 2] == '4') && (parserData[l - 1] == '0')) {
-                            fontlib_SetBackgroundColor(0x00);
+                        if (parserData[l - 2] == '4') {
                             bGcolorHasBeenSet = true;
-                        }
-                        if ((parserData[l - 2] == '4') && (parserData[l - 1] == '1')) {
-                            fontlib_SetBackgroundColor(0x01);
-                            bGcolorHasBeenSet = true;
-                        }
-                        if ((parserData[l - 2] == '4') && (parserData[l - 1] == '2')) {
-                            fontlib_SetBackgroundColor(0x02);
-                            bGcolorHasBeenSet = true;
-                        }
-                        if ((parserData[l - 2] == '4') && (parserData[l - 1] == '3')) {
-                            fontlib_SetBackgroundColor(0x03);
-                            bGcolorHasBeenSet = true;
-                        }
-                        if ((parserData[l - 2] == '4') && (parserData[l - 1] == '4')) {
-                            fontlib_SetBackgroundColor(0x04);
-                            bGcolorHasBeenSet = true;
-                        }
-                        if ((parserData[l - 2] == '4') && (parserData[l - 1] == '5')) {
-                            fontlib_SetBackgroundColor(0x05);
-                            bGcolorHasBeenSet = true;
-                        }
-                        if ((parserData[l - 2] == '4') && (parserData[l - 1] == '6')) {
-                            fontlib_SetBackgroundColor(0x06);
-                            bGcolorHasBeenSet = true;
-                        }
-                        if ((parserData[l - 2] == '4') && (parserData[l - 1] == '7')) {
-                            fontlib_SetBackgroundColor(0x07);
-                            bGcolorHasBeenSet = true;
+                            switch (parserData[l - 1]) {
+                                case '0':
+                                    fontlib_SetBackgroundColor(BLACK);
+                                    break;
+                                case '1':
+                                    fontlib_SetBackgroundColor(RED);
+                                    break;
+                                case '2':
+                                    fontlib_SetBackgroundColor(GREEN);
+                                    break;
+                                case '3':
+                                    fontlib_SetBackgroundColor(YELLOW);
+                                    break;
+                                case '4':
+                                    fontlib_SetBackgroundColor(BLUE);
+                                    break;
+                                case '5':
+                                    fontlib_SetBackgroundColor(PURPLE);
+                                    break;
+                                case '6':
+                                    fontlib_SetBackgroundColor(CYAN);
+                                    break;
+                                case '7':
+                                    fontlib_SetBackgroundColor(WHITE);
+                                    break;
+                                default:
+                                    bGcolorHasBeenSet = false;
+                                    break;
+                            }
                         }
                     }
                 } while (l > i + 2);
@@ -1658,51 +1692,49 @@ void draw_str_update_buf(const char *string) {
     
     uint16_t i, j;
     uint8_t x, y;
-    char temp[2];
-    
-    temp[1] = 0; // Put null terminator in temp
+    char temp[2] = {0, 0};
     
     // Loop through input
-    for (i = 0; i < 256; i++) {
+    for (i = 0; i < INPUT_LENGTH; i++) {
         if (string[i] == 0) break;
         
         // Get x & y coords
-        x = (fontlib_GetCursorX() - 2) / 6;
-        y = (fontlib_GetCursorY() - 2) / 12;
+        x = (fontlib_GetCursorX() - SCR_OFFSET_X) / FONT_WIDTH;
+        y = (fontlib_GetCursorY() - SCR_OFFSET_Y) / FONT_HEIGHT;
         
         // If the screen should scroll...
         if (shouldScroll) {
             fontlib_ScrollWindowDown(); // Manually scroll window
             
             // Scroll the contents of the screen buffer
-            memmove(&scrBuffer[0][0], &scrBuffer[0][1], 936 * sizeof(char_styled_t));
-            for (j = 0; j < 52; j++) {
-                scrBuffer[j][18].character = ' ';
-                scrBuffer[j][18].bold = false;
-                scrBuffer[j][18].italic = false;
-                scrBuffer[j][18].underline = false;
-                scrBuffer[j][18].fg_col = 7;
-                scrBuffer[j][18].bg_col = 0;
+            memmove(&scrBuffer[0][0], &scrBuffer[0][1], (BUFFER_SIZE - SCR_WIDTH) * sizeof(char_styled_t));
+            for (j = 0; j < SCR_WIDTH; j++) {
+                scrBuffer[j][SCR_HEIGHT - 1].character = ' ';
+                scrBuffer[j][SCR_HEIGHT - 1].bold = false;
+                scrBuffer[j][SCR_HEIGHT - 1].italic = false;
+                scrBuffer[j][SCR_HEIGHT - 1].underline = false;
+                scrBuffer[j][SCR_HEIGHT - 1].fg_col = WHITE;
+                scrBuffer[j][SCR_HEIGHT - 1].bg_col = BLACK;
             }
             
             // Erase the bottom line
-            gfx_SetColor(0);
-            gfx_FillRectangle(0, 218, 320, 22);
+            gfx_SetColor(BLACK);
+            gfx_FillRectangle(SCR_OFFSET_X, (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y), SCR_WIDTH_P, FONT_HEIGHT);
             
-            fontlib_SetCursorPosition(2, 218);
+            fontlib_SetCursorPosition(SCR_OFFSET_X, (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y));
             
             x = 0;
-            y = 18;
+            y = SCR_HEIGHT - 1;
         }
         
-        shouldScroll = ((x == 51) && (y == 18));
+        shouldScroll = ((x == SCR_WIDTH - 1) && (y == SCR_HEIGHT - 1));
         
         temp[0] = string[i];
         fontlib_DrawString(temp);
         
         if (underlineText) {
             gfx_SetColor(fontlib_GetForegroundColor());
-            gfx_HorizLine(fontlib_GetCursorX() - 6, fontlib_GetCursorY() + 10, 6);
+            gfx_HorizLine(fontlib_GetCursorX() - FONT_WIDTH, fontlib_GetCursorY() + FONT_HEIGHT - 2, FONT_WIDTH);
         }
         
         scrBuffer[x][y].character = string[i];
@@ -1739,25 +1771,25 @@ void draw_newline(void) {
     
     uint8_t j, y = fontlib_GetCursorY();
     
-    if (((y - 2) / 12) == 18) {
+    if (((y - SCR_OFFSET_Y) / FONT_HEIGHT) == SCR_HEIGHT - 1) {
         fontlib_ScrollWindowDown(); // Manually scroll window
         
         // Scroll the contents of the screen buffer
-        memmove(&scrBuffer[0][0], &scrBuffer[0][1], 936 * sizeof(char_styled_t));
-        for (j = 0; j < 52; j++) {
-            scrBuffer[j][18].character = ' ';
-            scrBuffer[j][18].bold = false;
-            scrBuffer[j][18].italic = false;
-            scrBuffer[j][18].underline = false;
-            scrBuffer[j][18].fg_col = 7;
-            scrBuffer[j][18].bg_col = 0;
+        memmove(&scrBuffer[0][0], &scrBuffer[0][1], (BUFFER_SIZE - SCR_WIDTH) * sizeof(char_styled_t));
+        for (j = 0; j < SCR_WIDTH; j++) {
+            scrBuffer[j][SCR_HEIGHT - 1].character = ' ';
+            scrBuffer[j][SCR_HEIGHT - 1].bold = false;
+            scrBuffer[j][SCR_HEIGHT - 1].italic = false;
+            scrBuffer[j][SCR_HEIGHT - 1].underline = false;
+            scrBuffer[j][SCR_HEIGHT - 1].fg_col = WHITE;
+            scrBuffer[j][SCR_HEIGHT - 1].bg_col = BLACK;
         }
         
         // Erase the bottom line
-        gfx_SetColor(0);
-        gfx_FillRectangle(0, 218, 320, 22);
+        gfx_SetColor(BLACK);
+        gfx_FillRectangle(SCR_OFFSET_X, (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y), SCR_WIDTH_P, FONT_HEIGHT);
         
-        fontlib_SetCursorPosition(2, y);
+        fontlib_SetCursorPosition(SCR_OFFSET_X, y);
     } else {
         fontlib_Newline();
     }
@@ -1803,7 +1835,7 @@ int run_prgm(char *prgm, char *args) {
     // Save shell state
     settingsAppvar = ti_Open("CEshSett", "r+");
     
-    ti_Seek(sizeof(char) * 66, SEEK_SET, settingsAppvar);
+    ti_Seek(sizeof(char) * (2 * USER_PWD_LENGTH), SEEK_SET, settingsAppvar);
     ti_Write(&sdRetFromPrgm, sizeof(bool), 1, settingsAppvar);
     ti_Write(&sdCursorPos, sizeof(uint16_t), 2, settingsAppvar);
     ti_Write(&sdTextColors, sizeof(uint8_t), 2, settingsAppvar);
@@ -1817,7 +1849,7 @@ int run_prgm(char *prgm, char *args) {
     
     // Save screen state
     settingsAppvar = ti_Open("CEshSBuf", "w+");
-    ti_Write(&scrBuffer, sizeof(char_styled_t), 988, settingsAppvar);
+    ti_Write(&scrBuffer, sizeof(char_styled_t), BUFFER_SIZE, settingsAppvar);
     ti_SetArchiveStatus(true, settingsAppvar);
     ti_Close(settingsAppvar);
     
