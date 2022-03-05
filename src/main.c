@@ -125,7 +125,7 @@ bool settingsAppvarExists = true;
 uint16_t dateTime[7];
 bool lastLoginHappened = false;
 
-char_styled_t scrBuffer[SCR_WIDTH][SCR_HEIGHT];
+char_styled_t scrBuffer[SCR_HEIGHT][SCR_WIDTH];
 bool shouldScroll;
 
 
@@ -154,12 +154,12 @@ void cesh_Init(void) {
     // Empty screen buffer
     for (i = 0; i < SCR_WIDTH; i++) {
         for (j = 0; j < SCR_HEIGHT; j++) {
-            scrBuffer[i][j].character = ' ';
-            scrBuffer[i][j].bold = false;
-            scrBuffer[i][j].italic = false;
-            scrBuffer[i][j].underline = false;
-            scrBuffer[i][j].fg_col = WHITE;
-            scrBuffer[i][j].bg_col = BLACK;
+            scrBuffer[j][i].character = ' ';
+            scrBuffer[j][i].bold = false;
+            scrBuffer[j][i].italic = false;
+            scrBuffer[j][i].underline = false;
+            scrBuffer[j][i].fg_col = WHITE;
+            scrBuffer[j][i].bg_col = BLACK;
         }
     }
 
@@ -223,12 +223,12 @@ void cesh_Init(void) {
         for (i = 0; i < SCR_WIDTH; i++) {
             for (j = 0; j < SCR_HEIGHT; j++) {
                 if (underlineText || italicText || boldText) parse_draw_string("\\e[0m");
-                if (scrBuffer[i][j].bold) parse_draw_string("\\e[1m");
-                if (scrBuffer[i][j].italic) parse_draw_string("\\e[3m");
-                if (scrBuffer[i][j].underline) parse_draw_string("\\e[4m");
-                fontlib_SetColors(scrBuffer[i][j].fg_col, scrBuffer[i][j].bg_col);
+                if (scrBuffer[j][i].bold) parse_draw_string("\\e[1m");
+                if (scrBuffer[j][i].italic) parse_draw_string("\\e[3m");
+                if (scrBuffer[j][i].underline) parse_draw_string("\\e[4m");
+                fontlib_SetColors(scrBuffer[j][i].fg_col, scrBuffer[j][i].bg_col);
                 fontlib_SetCursorPosition(SCR_OFFSET_X + (i * FONT_WIDTH), SCR_OFFSET_Y + (j * FONT_HEIGHT));
-                fontlib_DrawGlyph(scrBuffer[i][j].character);
+                fontlib_DrawGlyph(scrBuffer[j][i].character);
                 if (underlineText) {
                     gfx_SetColor(fontlib_GetForegroundColor());
                     gfx_HorizLine(fontlib_GetCursorX() - FONT_WIDTH, fontlib_GetCursorY() + FONT_HEIGHT - 2, FONT_WIDTH);
@@ -1249,14 +1249,14 @@ void get_user_input(const char *msg, const bool maskInput, const uint16_t offset
                     fontlib_ScrollWindowDown(); // Manually scroll window
 
                     // Scroll the contents of the screen buffer
-                    memmove(&scrBuffer[0][0], &scrBuffer[0][1], (BUFFER_SIZE - SCR_WIDTH) * sizeof(char_styled_t));
+                    memmove(&scrBuffer[0][0], &scrBuffer[1][0], (BUFFER_SIZE - SCR_WIDTH) * sizeof(char_styled_t));
                     for (k = 0; k < SCR_WIDTH; k++) {
-                        scrBuffer[k][SCR_HEIGHT - 1].character = ' ';
-                        scrBuffer[k][SCR_HEIGHT - 1].bold = false;
-                        scrBuffer[k][SCR_HEIGHT - 1].italic = false;
-                        scrBuffer[k][SCR_HEIGHT - 1].underline = false;
-                        scrBuffer[k][SCR_HEIGHT - 1].fg_col = WHITE;
-                        scrBuffer[k][SCR_HEIGHT - 1].bg_col = BLACK;
+                        scrBuffer[SCR_HEIGHT - 1][k].character = ' ';
+                        scrBuffer[SCR_HEIGHT - 1][k].bold = false;
+                        scrBuffer[SCR_HEIGHT - 1][k].italic = false;
+                        scrBuffer[SCR_HEIGHT - 1][k].underline = false;
+                        scrBuffer[SCR_HEIGHT - 1][k].fg_col = WHITE;
+                        scrBuffer[SCR_HEIGHT - 1][k].bg_col = BLACK;
                     }
 
                     // Erase the bottom line
@@ -1494,12 +1494,12 @@ void parse_draw_string(const char *string) {
                     fontlib_ClearWindow();
                     for (x = 0; x < SCR_WIDTH; x++) {
                         for (y = 0; y < SCR_HEIGHT; y++) {
-                            scrBuffer[x][y].character = ' ';
-                            scrBuffer[x][y].bold = false;
-                            scrBuffer[x][y].italic = false;
-                            scrBuffer[x][y].underline = false;
-                            scrBuffer[x][y].fg_col = WHITE;
-                            scrBuffer[x][y].bg_col = BLACK;
+                            scrBuffer[y][x].character = ' ';
+                            scrBuffer[y][x].bold = false;
+                            scrBuffer[y][x].italic = false;
+                            scrBuffer[y][x].underline = false;
+                            scrBuffer[y][x].fg_col = WHITE;
+                            scrBuffer[y][x].bg_col = BLACK;
                         }
                     }
                 }
@@ -1510,12 +1510,12 @@ void parse_draw_string(const char *string) {
                     y = fontlib_GetCursorY();
                     fontlib_ClearEOL();
                     for (k = (x - SCR_OFFSET_X) / FONT_WIDTH; k < SCR_WIDTH; k++) {
-                        scrBuffer[k][y].character = ' ';
-                        scrBuffer[k][y].bold = false;
-                        scrBuffer[k][y].italic = false;
-                        scrBuffer[k][y].underline = false;
-                        scrBuffer[k][y].fg_col = WHITE;
-                        scrBuffer[k][y].bg_col = BLACK;
+                        scrBuffer[y][k].character = ' ';
+                        scrBuffer[y][k].bold = false;
+                        scrBuffer[y][k].italic = false;
+                        scrBuffer[y][k].underline = false;
+                        scrBuffer[y][k].fg_col = WHITE;
+                        scrBuffer[y][k].bg_col = BLACK;
                     }
                 }
 
@@ -1707,14 +1707,14 @@ void draw_str_update_buf(const char *string) {
             fontlib_ScrollWindowDown(); // Manually scroll window
 
             // Scroll the contents of the screen buffer
-            memmove(&scrBuffer[0][0], &scrBuffer[0][1], (BUFFER_SIZE - SCR_WIDTH) * sizeof(char_styled_t));
+            memmove(&scrBuffer[0][0], &scrBuffer[1][0], (BUFFER_SIZE - SCR_WIDTH) * sizeof(char_styled_t));
             for (j = 0; j < SCR_WIDTH; j++) {
-                scrBuffer[j][SCR_HEIGHT - 1].character = ' ';
-                scrBuffer[j][SCR_HEIGHT - 1].bold = false;
-                scrBuffer[j][SCR_HEIGHT - 1].italic = false;
-                scrBuffer[j][SCR_HEIGHT - 1].underline = false;
-                scrBuffer[j][SCR_HEIGHT - 1].fg_col = WHITE;
-                scrBuffer[j][SCR_HEIGHT - 1].bg_col = BLACK;
+                scrBuffer[SCR_HEIGHT - 1][j].character = ' ';
+                scrBuffer[SCR_HEIGHT - 1][j].bold = false;
+                scrBuffer[SCR_HEIGHT - 1][j].italic = false;
+                scrBuffer[SCR_HEIGHT - 1][j].underline = false;
+                scrBuffer[SCR_HEIGHT - 1][j].fg_col = WHITE;
+                scrBuffer[SCR_HEIGHT - 1][j].bg_col = BLACK;
             }
 
             // Erase the bottom line
@@ -1737,12 +1737,12 @@ void draw_str_update_buf(const char *string) {
             gfx_HorizLine(fontlib_GetCursorX() - FONT_WIDTH, fontlib_GetCursorY() + FONT_HEIGHT - 2, FONT_WIDTH);
         }
 
-        scrBuffer[x][y].character = string[i];
-        scrBuffer[x][y].bold = boldText;
-        scrBuffer[x][y].italic = italicText;
-        scrBuffer[x][y].underline = underlineText;
-        scrBuffer[x][y].fg_col = fontlib_GetForegroundColor();
-        scrBuffer[x][y].bg_col = fontlib_GetBackgroundColor();
+        scrBuffer[y][x].character = string[i];
+        scrBuffer[y][x].bold = boldText;
+        scrBuffer[y][x].italic = italicText;
+        scrBuffer[y][x].underline = underlineText;
+        scrBuffer[y][x].fg_col = fontlib_GetForegroundColor();
+        scrBuffer[y][x].bg_col = fontlib_GetBackgroundColor();
     }
 }
 
@@ -1775,14 +1775,14 @@ void draw_newline(void) {
         fontlib_ScrollWindowDown(); // Manually scroll window
 
         // Scroll the contents of the screen buffer
-        memmove(&scrBuffer[0][0], &scrBuffer[0][1], (BUFFER_SIZE - SCR_WIDTH) * sizeof(char_styled_t));
+        memmove(&scrBuffer[0][0], &scrBuffer[1][0], (BUFFER_SIZE - SCR_WIDTH) * sizeof(char_styled_t));
         for (j = 0; j < SCR_WIDTH; j++) {
-            scrBuffer[j][SCR_HEIGHT - 1].character = ' ';
-            scrBuffer[j][SCR_HEIGHT - 1].bold = false;
-            scrBuffer[j][SCR_HEIGHT - 1].italic = false;
-            scrBuffer[j][SCR_HEIGHT - 1].underline = false;
-            scrBuffer[j][SCR_HEIGHT - 1].fg_col = WHITE;
-            scrBuffer[j][SCR_HEIGHT - 1].bg_col = BLACK;
+            scrBuffer[SCR_HEIGHT - 1][j].character = ' ';
+            scrBuffer[SCR_HEIGHT - 1][j].bold = false;
+            scrBuffer[SCR_HEIGHT - 1][j].italic = false;
+            scrBuffer[SCR_HEIGHT - 1][j].underline = false;
+            scrBuffer[SCR_HEIGHT - 1][j].fg_col = WHITE;
+            scrBuffer[SCR_HEIGHT - 1][j].bg_col = BLACK;
         }
 
         // Erase the bottom line
