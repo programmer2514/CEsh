@@ -442,7 +442,7 @@ void cesh_Shell(void) {
         fontlib_SetForegroundColor(temp);
 
         get_user_input("$ ", false, fontlib_GetCursorX());
-        parse_user_input();
+        if (strlen(input)) parse_user_input();
 
     } while (strcmp(input, "exit")); // Keep going until user types exit
 }
@@ -465,12 +465,33 @@ void cesh_End(void) {
 // Parse user input
 void parse_user_input(void) {
 
-    uint16_t i, j;
+    uint16_t i, j, k;
     char *ptr;
-    int retval;
+    int retval, size;
     uint8_t numargs = 1;
     uint8_t *arglocs = malloc(1);
     bool inQuotes = false;
+    
+    settingsAppvar = ti_Open("CEshHist", "r+");
+    if (!settingsAppvar) 
+        settingsAppvar = ti_Open("CEshHist", "w+");
+    size = ti_GetSize(settingsAppvar);
+    
+    // If it has fewer than 250 entries, seek to the end of the file
+    if (size < (250 * INPUT_LENGTH)) {
+        ti_Seek(0, SEEK_END, settingsAppvar);
+        
+    // Otherwise, delete the oldest entry
+    } else { 
+        ptr = ti_GetDataPtr(settingsAppvar);
+        memmove(ptr, ptr + INPUT_LENGTH, size - INPUT_LENGTH);
+        ti_Seek(size - INPUT_LENGTH, SEEK_SET, settingsAppvar);
+    }
+    
+    // Add command to history buffer & close appvar
+    ti_Write(&input, sizeof(char), INPUT_LENGTH, settingsAppvar);
+    ti_SetArchiveStatus(true, settingsAppvar);
+    ti_Close(settingsAppvar);
 
     arglocs[0] = 0; // Pre-fill location of command name, as it's always 0
 
@@ -511,19 +532,53 @@ void parse_user_input(void) {
 
         startOnNewLine = true;
         draw_newline();
-
+        
+        j = 1;
+        k = 1;
+        
         for (i = 1; i < numargs; i++) {
-            parse_draw_string(&input[arglocs[i]]);
-            if (i < numargs - 1) {
-                draw_str_update_buf(" ");
+            if (j) {
+                if (!strcmp(&input[arglocs[i]], "-n")) {
+                    startOnNewLine = false;
+                } else if (!strcmp(&input[arglocs[i]], "-e")) {
+                    k = 1;
+                } else if (!strcmp(&input[arglocs[i]], "-E")) {
+                    k = 2;
+                } else {
+                    j = 0;
+                }
+            }
+            if (!j) {
+                if (k == 1)
+                    parse_draw_string(&input[arglocs[i]]);
+                if (k == 2)
+                    draw_str_update_buf(&input[arglocs[i]]);
+                if (i < numargs - 1) {
+                    draw_str_update_buf(" ");
+                }
             }
         }
 
-    // Prevent shell running itself
-    } else if (!strcmp(input, "./CESH")) {
+    // Command: history
+    } else if (!strcmp(input, "history")) {
 
+        startOnNewLine = false;
         draw_newline();
-        draw_str_update_buf("No");
+        
+        settingsAppvar = ti_Open("CEshHist", "r");
+        size = ti_GetSize(settingsAppvar);
+        
+        for (i = 1; i < (size / INPUT_LENGTH); i++) {
+            ti_Seek(i * INPUT_LENGTH, SEEK_SET, settingsAppvar);
+            ti_Read(&input, sizeof(char), INPUT_LENGTH, settingsAppvar);
+            
+            draw_int_update_buf(i, 1 + (i >= 10) + (i >= 100));
+            draw_str_update_buf("  ");
+            draw_str_update_buf(input);
+            parse_draw_string("\\n");
+        }
+        
+        ti_Close(settingsAppvar);
 
     // Debug command (remove in release)
     } else if (!strcmp(input, "dbg")) {
@@ -536,6 +591,12 @@ void parse_user_input(void) {
             draw_str_update_buf(&input[arglocs[i]]);
             parse_draw_string("\\n");
         }
+
+    // Prevent shell running itself
+    } else if (!strcmp(input, "./CESH")) {
+
+        draw_newline();
+        draw_str_update_buf("No");
 
     // Command: .
     } else if (input[0] == '.') {
@@ -577,8 +638,9 @@ void parse_user_input(void) {
 void get_user_input(const char *msg, const bool maskInput, const uint16_t offsetX) {
 
     bool key = false, prevkey = true, done = false;
-    uint16_t i, cursorY = fontlib_GetCursorY();
+    uint16_t i, cursorY = fontlib_GetCursorY(), y = fontlib_GetCursorY();
     int16_t j = 0, k, lineWrap;
+    uint8_t histOffset = 1;
     char temp[2] = {0, 0};
 
     // Empty output
@@ -691,77 +753,77 @@ void get_user_input(const char *msg, const bool maskInput, const uint16_t offset
                     if ((textIndex == 2) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'X';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 3) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'x';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     break;
                 case kb_Ln:
                     if ((textIndex == 2) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'S';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 3) && (strlen(input) < 255)) {
                         input[strlen(input)] = 's';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     break;
                 case kb_Log:
                     if ((textIndex == 2) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'N';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 3) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'n';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     break;
                 case kb_Square:
                     if ((textIndex == 2) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'I';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 3) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'i';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     break;
                 case kb_Recip:
                     if ((textIndex == 0) && (strlen(input) < 255)) {
                         input[strlen(input)] = '\\';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 2) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'D';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 3) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'd';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     break;
                 case kb_Math:
                     if ((textIndex == 2) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'A';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 3) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'a';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     break;
                 case kb_Alpha:
@@ -780,109 +842,109 @@ void get_user_input(const char *msg, const bool maskInput, const uint16_t offset
                     if ((textIndex == 0) && (strlen(input) < 255)) {
                         input[strlen(input)] = '0';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 2) || (textIndex == 3)) {
                         input[strlen(input)] = ' ';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     break;
                 case kb_1:
                     if ((textIndex == 0) && (strlen(input) < 255)) {
                         input[strlen(input)] = '1';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 2) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'Y';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 3) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'y';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     break;
                 case kb_4:
                     if ((textIndex == 0) && (strlen(input) < 255)) {
                         input[strlen(input)] = '4';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 2) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'T';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 3) && (strlen(input) < 255)) {
                         input[strlen(input)] = 't';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     break;
                 case kb_7:
                     if ((textIndex == 0) && (strlen(input) < 255)) {
                         input[strlen(input)] = '7';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 2) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'O';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 3) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'o';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     break;
                 case kb_Comma:
                     if ((textIndex == 0) && (strlen(input) < 255)) {
                         input[strlen(input)] = ',';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 1) && (strlen(input) < 255)) {
                         input[strlen(input)] = '=';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 2) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'J';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 3) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'j';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     break;
                 case kb_Sin:
                     if ((textIndex == 2) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'E';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 3) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'e';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     break;
                 case kb_Apps:
                     if ((textIndex == 2) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'B';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 3) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'b';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     break;
                 default:
@@ -894,119 +956,119 @@ void get_user_input(const char *msg, const bool maskInput, const uint16_t offset
                     if ((textIndex == 0) && (strlen(input) < 255)) {
                         input[strlen(input)] = '.';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 1) && (strlen(input) < 255)) {
                         input[strlen(input)] = '!';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 2) && (strlen(input) < 255)) {
                         input[strlen(input)] = ':';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 3) && (strlen(input) < 255)) {
                         input[strlen(input)] = ';';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     break;
                 case kb_2:
                     if ((textIndex == 0) && (strlen(input) < 255)) {
                         input[strlen(input)] = '2';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 2) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'Z';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 3) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'z';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     break;
                 case kb_5:
                     if ((textIndex == 0) && (strlen(input) < 255)) {
                         input[strlen(input)] = '5';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 2) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'U';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 3) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'u';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     break;
                 case kb_8:
                     if ((textIndex == 0) && (strlen(input) < 255)) {
                         input[strlen(input)] = '8';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 2) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'P';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 3) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'p';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     break;
                 case kb_LParen:
                     if ((textIndex == 0) && (strlen(input) < 255)) {
                         input[strlen(input)] = '(';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 1) && (strlen(input) < 255)) {
                         input[strlen(input)] = '{';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 2) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'K';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 3) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'k';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     break;
                 case kb_Cos:
                     if ((textIndex == 2) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'F';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 3) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'f';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     break;
                 case kb_Prgm:
                     if ((textIndex == 2) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'C';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 3) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'c';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     break;
                 default:
@@ -1018,92 +1080,92 @@ void get_user_input(const char *msg, const bool maskInput, const uint16_t offset
                     if ((textIndex == 0) && (strlen(input) < 255)) {
                         input[strlen(input)] = '_';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 2) || (textIndex == 3)) {
                         input[strlen(input)] = '?';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     break;
                 case kb_3:
                     if ((textIndex == 0) && (strlen(input) < 255)) {
                         input[strlen(input)] = '3';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 2) || (textIndex == 3)) {
                         input[strlen(input)] = '@';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     break;
                 case kb_6:
                     if ((textIndex == 0) && (strlen(input) < 255)) {
                         input[strlen(input)] = '6';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 2) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'V';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 3) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'v';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     break;
                 case kb_9:
                     if ((textIndex == 0) && (strlen(input) < 255)) {
                         input[strlen(input)] = '9';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 2) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'Q';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 3) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'q';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     break;
                 case kb_RParen:
                     if ((textIndex == 0) && (strlen(input) < 255)) {
                         input[strlen(input)] = ')';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 1) && (strlen(input) < 255)) {
                         input[strlen(input)] = '}';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 2) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'L';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 3) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'l';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     break;
                 case kb_Tan:
                     if ((textIndex == 2) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'G';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 3) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'g';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     break;
                 default:
@@ -1118,112 +1180,112 @@ void get_user_input(const char *msg, const bool maskInput, const uint16_t offset
                     if ((textIndex == 0) && (strlen(input) < 255)) {
                         input[strlen(input)] = '+';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 2) && (strlen(input) < 255)) {
                         input[strlen(input)] = '\'';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 3) && (strlen(input) < 255)) {
                         input[strlen(input)] = '"';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     break;
                 case kb_Sub:
                     if ((textIndex == 0) && (strlen(input) < 255)) {
                         input[strlen(input)] = '-';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 1) && (strlen(input) < 255)) {
                         input[strlen(input)] = ']';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 2) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'W';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 3) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'w';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     break;
                 case kb_Mul:
                     if ((textIndex == 0) && (strlen(input) < 255)) {
                         input[strlen(input)] = '*';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 1) && (strlen(input) < 255)) {
                         input[strlen(input)] = '[';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 2) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'R';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 3) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'r';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     break;
                 case kb_Div:
                     if ((textIndex == 0) && (strlen(input) < 255)) {
                         input[strlen(input)] = '/';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 1) && (strlen(input) < 255)) {
                         input[strlen(input)] = '&';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 2) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'M';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 3) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'm';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     break;
                 case kb_Power:
                     if ((textIndex == 0) && (strlen(input) < 255)) {
                         input[strlen(input)] = '^';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 1) && (strlen(input) < 255)) {
                         input[strlen(input)] = '|';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 2) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'H';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     if ((textIndex == 3) && (strlen(input) < 255)) {
                         input[strlen(input)] = 'h';
                         input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + 6;
+                        lineWrap = lineWrap + FONT_WIDTH;
                     }
                     break;
                 case kb_Clear:
                     for (i = 0; i <= 256; i++) {
                         input[i] = 0;
                     }
-                    lineWrap = offsetX + 6;
+                    lineWrap = offsetX + FONT_WIDTH;
                     break;
                 default:
                     break;
@@ -1231,8 +1293,82 @@ void get_user_input(const char *msg, const bool maskInput, const uint16_t offset
 
             switch (kb_Data[7]) {
                 case kb_Down:
+                    // Seek to correct history offset
+                    histOffset = (histOffset > 2) ? histOffset - 2 : 0;
+                    settingsAppvar = ti_Open("CEshHist", "r");
+                    if (settingsAppvar && histOffset) {
+                        ti_Seek(0 - (histOffset * INPUT_LENGTH), SEEK_END, settingsAppvar);
+                        ti_Read(&input, sizeof(char), INPUT_LENGTH, settingsAppvar);
+                    }
+                    ti_Close(settingsAppvar);
+                    lineWrap = offsetX + (strlen(input) * FONT_WIDTH) + FONT_WIDTH;
+                    while (lineWrap >= ((SCR_WIDTH - 1) * FONT_WIDTH)) {
+                        lineWrap -= ((SCR_WIDTH - 1) * FONT_WIDTH);
+                        y += FONT_HEIGHT;
+                        if ((cursorY >= ((SCR_HEIGHT - (strlen(input) / SCR_WIDTH)) * FONT_HEIGHT)) && (y >= (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y))) {
+                            cursorY -= FONT_HEIGHT;
+                            fontlib_ScrollWindowDown(); // Manually scroll window
+
+                            // Scroll the contents of the screen buffer
+                            memmove(&scrBuffer[0][0], &scrBuffer[1][0], (BUFFER_SIZE - SCR_WIDTH) * sizeof(char_styled_t));
+                            for (k = 0; k < SCR_WIDTH; k++) {
+                                scrBuffer[SCR_HEIGHT - 1][k].character = ' ';
+                                scrBuffer[SCR_HEIGHT - 1][k].bold = false;
+                                scrBuffer[SCR_HEIGHT - 1][k].italic = false;
+                                scrBuffer[SCR_HEIGHT - 1][k].underline = false;
+                                scrBuffer[SCR_HEIGHT - 1][k].fg_col = WHITE;
+                                scrBuffer[SCR_HEIGHT - 1][k].bg_col = BLACK;
+                            }
+
+                            // Erase the bottom line
+                            gfx_SetColor(BLACK);
+                            gfx_FillRectangle(SCR_OFFSET_X, (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y), SCR_WIDTH_P, FONT_HEIGHT);
+
+                            y -= FONT_HEIGHT;
+                            fontlib_SetCursorPosition(SCR_OFFSET_X, (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y));
+                        }
+                    }
+                    histOffset++;
+                    break;
+                case kb_Left:
+                    break;
+                case kb_Right:
                     break;
                 case kb_Up:
+                    settingsAppvar = ti_Open("CEshHist", "r");
+                    if (settingsAppvar) {
+                        ti_Seek(0 - (histOffset * INPUT_LENGTH), SEEK_END, settingsAppvar);
+                        ti_Read(&input, sizeof(char), INPUT_LENGTH, settingsAppvar);
+                    }
+                    histOffset = (histOffset + 1) * (histOffset <= (ti_GetSize(settingsAppvar) / INPUT_LENGTH));
+                    ti_Close(settingsAppvar);
+                    lineWrap = offsetX + (strlen(input) * FONT_WIDTH) + FONT_WIDTH;
+                    while (lineWrap >= ((SCR_WIDTH - 1) * FONT_WIDTH)) {
+                        lineWrap -= ((SCR_WIDTH - 1) * FONT_WIDTH);
+                        y += FONT_HEIGHT;
+                        if ((cursorY >= ((SCR_HEIGHT - (strlen(input) / SCR_WIDTH)) * FONT_HEIGHT)) && (y >= (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y))) {
+                            cursorY -= FONT_HEIGHT;
+                            fontlib_ScrollWindowDown(); // Manually scroll window
+
+                            // Scroll the contents of the screen buffer
+                            memmove(&scrBuffer[0][0], &scrBuffer[1][0], (BUFFER_SIZE - SCR_WIDTH) * sizeof(char_styled_t));
+                            for (k = 0; k < SCR_WIDTH; k++) {
+                                scrBuffer[SCR_HEIGHT - 1][k].character = ' ';
+                                scrBuffer[SCR_HEIGHT - 1][k].bold = false;
+                                scrBuffer[SCR_HEIGHT - 1][k].italic = false;
+                                scrBuffer[SCR_HEIGHT - 1][k].underline = false;
+                                scrBuffer[SCR_HEIGHT - 1][k].fg_col = WHITE;
+                                scrBuffer[SCR_HEIGHT - 1][k].bg_col = BLACK;
+                            }
+
+                            // Erase the bottom line
+                            gfx_SetColor(BLACK);
+                            gfx_FillRectangle(SCR_OFFSET_X, (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y), SCR_WIDTH_P, FONT_HEIGHT);
+
+                            y -= FONT_HEIGHT;
+                            fontlib_SetCursorPosition(SCR_OFFSET_X, (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y));
+                        }
+                    }
                     break;
                 default:
                     break;
@@ -1245,7 +1381,7 @@ void get_user_input(const char *msg, const bool maskInput, const uint16_t offset
             if (lineWrap == (((SCR_WIDTH - 1) * FONT_WIDTH) + SCR_OFFSET_X)) {
                 lineWrap = 0;
                 if (fontlib_GetCursorY() == (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y)) {
-                    cursorY = cursorY - FONT_HEIGHT;
+                    cursorY -= FONT_HEIGHT;
                     fontlib_ScrollWindowDown(); // Manually scroll window
 
                     // Scroll the contents of the screen buffer
