@@ -63,8 +63,9 @@
 
 #define BUFFER_SIZE (SCR_WIDTH * SCR_HEIGHT)
 
-#define GET_DATE_OF_WEEK ((day += mon < 3 ? yr-- : yr - 2, 23*mon/9 + day + 4 + yr/4- yr/100 + yr/400)%7)
+#define getDayOfWeek(yr,mon,day) (((day) += (mon) < 3 ? (yr)-- : (yr) - 2, 23*(mon)/9 + (day) + 4 + (yr)/4- (yr)/100 + (yr)/400)%7)
 
+#define inRange(input,min,max) ((input)>=(min)&&(input)<=(max))
 
 /* Structure definitions */
 typedef struct __char_styled__ {
@@ -82,13 +83,14 @@ void cesh_Init(void);
 void cesh_Setup(void);
 void cesh_Shell(void);
 void cesh_End(void);
+void cesh_PreGC(void);
 void parse_user_input(void);
 void get_user_input(const char *msg, const bool maskInput, const uint16_t offsetX);
 void parse_draw_string(const char *string);
 void draw_str_update_buf(const char *string);
 void draw_int_update_buf(int number, const uint8_t length);
 void draw_newline(void);
-uint8_t str_to_num(const char *string, const uint8_t length, const uint8_t base);
+uint16_t str_to_num(const char *string, const uint8_t length, const uint8_t base);
 int run_prgm(char *prgm, char *args);
 
 
@@ -163,7 +165,7 @@ void cesh_Init(void) {
         }
     }
 
-    ti_SetGCBehavior(gfx_End, cesh_Init);
+    ti_SetGCBehavior(cesh_PreGC, cesh_Init);
 
     gfx_Begin();
     gfx_SetPalette(imgPalette, sizeof_imgPalette, 0);
@@ -362,7 +364,7 @@ void cesh_Shell(void) {
         dateTime[5] = (uint16_t)sec;
 
         // Get day of week
-        dateTime[6] = GET_DATE_OF_WEEK;
+        dateTime[6] = getDayOfWeek(yr,mon,day);
 
         settingsAppvar = ti_Open("CEshSett", "r+");
         ti_Seek((2 * USER_PWD_LENGTH) + 7, SEEK_SET, settingsAppvar); // Go to correct location in settings appvar
@@ -458,8 +460,22 @@ void cesh_End(void) {
     ti_Write(&sdRetFromPrgm, sizeof(bool), 1, settingsAppvar);
     ti_SetArchiveStatus(true, settingsAppvar);
     ti_Close(settingsAppvar);
+    settingsAppvar = ti_Open("CEshHist", "r");
+    ti_SetArchiveStatus(true, settingsAppvar);
+    ti_Close(settingsAppvar);
 
     exit(0);
+}
+
+// Handle GarbageCollect
+void cesh_PreGC(void) {
+
+    // Save screen state
+    settingsAppvar = ti_Open("CEshSBuf", "w+");
+    ti_Write(&scrBuffer, sizeof(char_styled_t), BUFFER_SIZE, settingsAppvar);
+    ti_Close(settingsAppvar);
+
+    gfx_End();
 }
 
 // Parse user input
@@ -490,7 +506,6 @@ void parse_user_input(void) {
     
     // Add command to history buffer & close appvar
     ti_Write(&input, sizeof(char), INPUT_LENGTH, settingsAppvar);
-    ti_SetArchiveStatus(true, settingsAppvar);
     ti_Close(settingsAppvar);
 
     arglocs[0] = 0; // Pre-fill location of command name, as it's always 0
@@ -533,8 +548,8 @@ void parse_user_input(void) {
         startOnNewLine = true;
         draw_newline();
         
-        j = 1;
-        k = 1;
+        j = 1; // 1 until args are parsed, then 0
+        k = 1; // 1 if parsing, 0 if not
         
         for (i = 1; i < numargs; i++) {
             if (j) {
@@ -568,14 +583,36 @@ void parse_user_input(void) {
         settingsAppvar = ti_Open("CEshHist", "r");
         size = ti_GetSize(settingsAppvar);
         
-        for (i = 1; i < (size / INPUT_LENGTH); i++) {
-            ti_Seek(i * INPUT_LENGTH, SEEK_SET, settingsAppvar);
-            ti_Read(&input, sizeof(char), INPUT_LENGTH, settingsAppvar);
-            
-            draw_int_update_buf(i, 1 + (i >= 10) + (i >= 100));
-            draw_str_update_buf("  ");
-            draw_str_update_buf(input);
-            parse_draw_string("\\n");
+        if (numargs > 1) {
+            if (!strcmp(&input[arglocs[1]], "-c")) {
+                ti_Delete("CEshHist");
+            } else if ((numargs > 2) && (!strcmp(&input[arglocs[1]], "-d"))) {
+                ptr = ti_GetDataPtr(settingsAppvar);
+                j = str_to_num(&input[arglocs[2]], strlen(&input[arglocs[2]]), 10);
+                memmove(ptr + INPUT_LENGTH, ptr, (j - 1) * INPUT_LENGTH);
+                ti_Resize(size - INPUT_LENGTH, settingsAppvar);
+            } else {
+                j = str_to_num(&input[arglocs[1]], strlen(&input[arglocs[1]]), 10);
+                for (i = (size / INPUT_LENGTH) - j; i < (size / INPUT_LENGTH); i++) {
+                    ti_Seek(i * INPUT_LENGTH, SEEK_SET, settingsAppvar);
+                    ti_Read(&input, sizeof(char), INPUT_LENGTH, settingsAppvar);
+                    
+                    draw_int_update_buf(i + 1, 1 + ((i + 1) >= 10) + ((i + 1) >= 100));
+                    draw_str_update_buf("  ");
+                    draw_str_update_buf(input);
+                    parse_draw_string("\\n");
+                }
+            }
+        } else {
+            for (i = 0; i < (size / INPUT_LENGTH); i++) {
+                ti_Seek(i * INPUT_LENGTH, SEEK_SET, settingsAppvar);
+                ti_Read(&input, sizeof(char), INPUT_LENGTH, settingsAppvar);
+                
+                draw_int_update_buf(i + 1, 1 + ((i + 1) >= 10) + ((i + 1) >= 100));
+                draw_str_update_buf("  ");
+                draw_str_update_buf(input);
+                parse_draw_string("\\n");
+            }
         }
         
         ti_Close(settingsAppvar);
@@ -1932,17 +1969,21 @@ void draw_newline(void) {
 }
 
 // Convert any base (up to base 36) string literal to 8-bit decimal integer
-uint8_t str_to_num(const char *string, const uint8_t length, const uint8_t base) {
+uint16_t str_to_num(const char *string, const uint8_t length, const uint8_t base) {
 
-    uint8_t returnValue = 0, i = 0, j = 0;
-
+    uint16_t result = 0, j = 1;
+    uint8_t i;
+    
     // Loop through string, convert each ASCII character to it's decimal form, and multiply it times the current place value
-    for (i = length; i > 0; i--) {
-        returnValue += (string[i - 1] - (((string[i - 1] > 47) && (string[i - 1] < 58)) * 48) - (((string[i - 1] > 64) && (string[i - 1] < 91)) * 55) - (((string[i - 1] > 96) && (string[i - 1] < 123)) * 87)) * pow(base, j);
-        j++;
+    for (i = length; i--; j *= base) {
+        result += j * (string[i]
+            - (inRange(string[i],'0','9') ? '0' : 0)
+            - (inRange(string[i],'A','Z') ? 'A' - 10 : 0)
+            - (inRange(string[i],'a','z') ? 'a' - 10 : 0)
+        );
     }
 
-    return returnValue;
+    return result;
 }
 
 
@@ -1986,7 +2027,6 @@ int run_prgm(char *prgm, char *args) {
     // Save screen state
     settingsAppvar = ti_Open("CEshSBuf", "w+");
     ti_Write(&scrBuffer, sizeof(char_styled_t), BUFFER_SIZE, settingsAppvar);
-    ti_SetArchiveStatus(true, settingsAppvar);
     ti_Close(settingsAppvar);
 
     gfx_End();
