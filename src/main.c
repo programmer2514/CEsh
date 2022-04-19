@@ -90,6 +90,7 @@ void draw_str_update_buf(const char *string);
 void draw_int_update_buf(int number, const uint8_t length);
 void draw_newline(void);
 uint16_t str_to_num(const char *string, const uint8_t length, const uint8_t base);
+uint8_t get_single_key_pressed(void);
 int run_prgm(char *prgm, char *args);
 
 
@@ -98,6 +99,10 @@ const char *P_CALC_NAME = (char *)0x3B000E;
 const char CURSOR_INDEX[4] = {129, 130, 128, 95};
 const char DOW_NAMES[7][4] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
 const char MON_NAMES[12][4] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+const char KEY_MAP[4][57] = {{0,0,0,0,0,0,0,0,0,0,'+' ,'-','*','/','^',0,0,'_','3','6','9',')',0  ,0,0,'.','2','5','8','(',0  ,0  ,0,'0','1','4','7',',',0  ,0  ,0,0,0  ,0  ,0  ,0  ,'\\',0  ,0,0,0,0,0,0,0,0,0},
+                             {0,0,0,0,0,0,0,0,0,0,0   ,']','[','&','|',0,0,0  ,0  ,0  ,0  ,'}',0  ,0,0,'!',0  ,0  ,0  ,'{',0  ,0  ,0,0  ,0  ,0  ,0  ,'=',0  ,0  ,0,0,0  ,0  ,0  ,0  ,0   ,0  ,0,0,0,0,0,0,0,0,0},
+                             {0,0,0,0,0,0,0,0,0,0,'\'','W','R','M','H',0,0,'?','@','V','Q','L','G',0,0,':','Z','U','P','K','F','C',0,' ','Y','T','O','J','E','B',0,0,'X','S','N','I','D' ,'A',0,0,0,0,0,0,0,0,0},
+                             {0,0,0,0,0,0,0,0,0,0,'"' ,'w','r','m','h',0,0,0  ,0  ,'v','q','l','g',0,0,';','z','u','p','k','f','c',0,' ','y','t','o','j','e','b',0,0,'x','s','n','i','d' ,'a',0,0,0,0,0,0,0,0,0}};
 
 char input[INPUT_LENGTH];
 char parserData[INPUT_LENGTH];
@@ -673,10 +678,10 @@ void parse_user_input(void) {
 // Get user input
 void get_user_input(const char *msg, const bool maskInput, const uint16_t offsetX) {
 
-    bool key = false, prevkey = true, done = false;
+    bool done = false;
     uint16_t i, cursorY = fontlib_GetCursorY(), y = fontlib_GetCursorY();
     int16_t j = 0, k, lineWrap;
-    uint8_t histOffset = 1;
+    uint8_t key, histOffset = 1;
     char temp[2] = {0, 0};
 
     // Empty output
@@ -692,8 +697,7 @@ void get_user_input(const char *msg, const bool maskInput, const uint16_t offset
 
     do {
         // Update keyboard data
-        kb_Scan();
-        key = kb_Data[1] || kb_Data[2] || kb_Data[3] || kb_Data[4] || kb_Data[5] || kb_Data[6] || kb_Data[7];
+        key = get_single_key_pressed();
 
         // Blink Cursor
         if (j == 0) { // Update screen output w/o cursor
@@ -757,658 +761,139 @@ void get_user_input(const char *msg, const bool maskInput, const uint16_t offset
         j++;
 
         // Update output
-        if (key && !prevkey) {
-
-            switch (kb_Data[1]) {
-                case kb_2nd:
-                    if ((textIndex == 2) || (textIndex == 3)) {
-                        textIndex = 0;
-                    } else if (textIndex == 0) {
-                        textIndex = 1;
-                    } else if (textIndex == 1) {
-                        textIndex = 3;
-                    }
-                    break;
-                case kb_Mode:
-                    if (textIndex < 2) {
-                        cesh_End();
-                    }
-                    break;
-                case kb_Del:
-                    if (strlen(input)) {
-                        input[strlen(input)-1] = 0;
-                        lineWrap = lineWrap - 6;
-                    }
-                    break;
-                default:
-                    break;
-            }
-
-            switch (kb_Data[2]) {
-                case kb_Sto:
-                    if ((textIndex == 2) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'X';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 3) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'x';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    break;
-                case kb_Ln:
-                    if ((textIndex == 2) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'S';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 3) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 's';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    break;
-                case kb_Log:
-                    if ((textIndex == 2) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'N';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 3) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'n';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    break;
-                case kb_Square:
-                    if ((textIndex == 2) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'I';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 3) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'i';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    break;
-                case kb_Recip:
-                    if ((textIndex == 0) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = '\\';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 2) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'D';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 3) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'd';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    break;
-                case kb_Math:
-                    if ((textIndex == 2) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'A';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 3) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'a';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    break;
-                case kb_Alpha:
-                    if (textIndex != 2) {
-                        textIndex = 2;
-                    } else {
-                        textIndex = 3;
-                    }
-                    break;
-                default:
-                    break;
-            }
-
-            switch (kb_Data[3]) {
-                case kb_0:
-                    if ((textIndex == 0) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = '0';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 2) || (textIndex == 3)) {
-                        input[strlen(input)] = ' ';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    break;
-                case kb_1:
-                    if ((textIndex == 0) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = '1';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 2) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'Y';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 3) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'y';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    break;
-                case kb_4:
-                    if ((textIndex == 0) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = '4';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 2) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'T';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 3) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 't';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    break;
-                case kb_7:
-                    if ((textIndex == 0) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = '7';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 2) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'O';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 3) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'o';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    break;
-                case kb_Comma:
-                    if ((textIndex == 0) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = ',';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 1) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = '=';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 2) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'J';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 3) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'j';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    break;
-                case kb_Sin:
-                    if ((textIndex == 2) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'E';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 3) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'e';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    break;
-                case kb_Apps:
-                    if ((textIndex == 2) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'B';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 3) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'b';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    break;
-                default:
-                    break;
-            }
-
-            switch (kb_Data[4]) {
-                case kb_DecPnt:
-                    if ((textIndex == 0) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = '.';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 1) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = '!';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 2) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = ':';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 3) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = ';';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    break;
-                case kb_2:
-                    if ((textIndex == 0) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = '2';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 2) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'Z';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 3) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'z';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    break;
-                case kb_5:
-                    if ((textIndex == 0) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = '5';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 2) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'U';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 3) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'u';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    break;
-                case kb_8:
-                    if ((textIndex == 0) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = '8';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 2) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'P';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 3) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'p';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    break;
-                case kb_LParen:
-                    if ((textIndex == 0) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = '(';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 1) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = '{';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 2) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'K';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 3) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'k';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    break;
-                case kb_Cos:
-                    if ((textIndex == 2) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'F';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 3) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'f';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    break;
-                case kb_Prgm:
-                    if ((textIndex == 2) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'C';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 3) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'c';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    break;
-                default:
-                    break;
-            }
-
-            switch (kb_Data[5]) {
-                case kb_Chs:
-                    if ((textIndex == 0) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = '_';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 2) || (textIndex == 3)) {
-                        input[strlen(input)] = '?';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    break;
-                case kb_3:
-                    if ((textIndex == 0) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = '3';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 2) || (textIndex == 3)) {
-                        input[strlen(input)] = '@';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    break;
-                case kb_6:
-                    if ((textIndex == 0) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = '6';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 2) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'V';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 3) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'v';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    break;
-                case kb_9:
-                    if ((textIndex == 0) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = '9';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 2) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'Q';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 3) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'q';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    break;
-                case kb_RParen:
-                    if ((textIndex == 0) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = ')';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 1) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = '}';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 2) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'L';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 3) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'l';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    break;
-                case kb_Tan:
-                    if ((textIndex == 2) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'G';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 3) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'g';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    break;
-                default:
-                    break;
-            }
-
-            switch (kb_Data[6]) {
-                case kb_Enter:
-                    done = true;
-                    break;
-                case kb_Add:
-                    if ((textIndex == 0) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = '+';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 2) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = '\'';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 3) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = '"';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    break;
-                case kb_Sub:
-                    if ((textIndex == 0) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = '-';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 1) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = ']';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 2) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'W';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 3) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'w';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    break;
-                case kb_Mul:
-                    if ((textIndex == 0) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = '*';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 1) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = '[';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 2) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'R';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 3) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'r';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    break;
-                case kb_Div:
-                    if ((textIndex == 0) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = '/';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 1) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = '&';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 2) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'M';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 3) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'm';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    break;
-                case kb_Power:
-                    if ((textIndex == 0) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = '^';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 1) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = '|';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 2) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'H';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    if ((textIndex == 3) && (strlen(input) < (INPUT_LENGTH - 2))) {
-                        input[strlen(input)] = 'h';
-                        input[strlen(input)+1] = 0;
-                        lineWrap = lineWrap + FONT_WIDTH;
-                    }
-                    break;
-                case kb_Clear:
-                    for (i = 0; i <= 256; i++) {
-                        input[i] = 0;
-                    }
-                    lineWrap = offsetX + FONT_WIDTH;
-                    break;
-                default:
-                    break;
-            }
-
-            switch (kb_Data[7]) {
-                case kb_Down:
-                    // Seek to correct history offset
-                    histOffset = (histOffset > 2) ? histOffset - 2 : 0;
-                    settingsAppvar = ti_Open("CEshHist", "r");
-                    if (settingsAppvar && histOffset) {
-                        ti_Seek(0 - (histOffset * INPUT_LENGTH), SEEK_END, settingsAppvar);
-                        ti_Read(&input, sizeof(char), INPUT_LENGTH, settingsAppvar);
-                    }
-                    ti_Close(settingsAppvar);
-                    lineWrap = offsetX + (strlen(input) * FONT_WIDTH) + FONT_WIDTH;
-                    while (lineWrap >= ((SCR_WIDTH - 1) * FONT_WIDTH)) {
-                        lineWrap -= ((SCR_WIDTH - 1) * FONT_WIDTH);
-                        y += FONT_HEIGHT;
-                        if ((cursorY >= ((SCR_HEIGHT - (strlen(input) / SCR_WIDTH)) * FONT_HEIGHT)) && (y >= (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y))) {
-                            cursorY -= FONT_HEIGHT;
-                            fontlib_ScrollWindowDown(); // Manually scroll window
-
-                            // Scroll the contents of the screen buffer
-                            memmove(&scrBuffer[0][0], &scrBuffer[1][0], (BUFFER_SIZE - SCR_WIDTH) * sizeof(char_styled_t));
-                            for (k = 0; k < SCR_WIDTH; k++) {
-                                scrBuffer[SCR_HEIGHT - 1][k].character = ' ';
-                                scrBuffer[SCR_HEIGHT - 1][k].bold = false;
-                                scrBuffer[SCR_HEIGHT - 1][k].italic = false;
-                                scrBuffer[SCR_HEIGHT - 1][k].underline = false;
-                                scrBuffer[SCR_HEIGHT - 1][k].fg_col = WHITE;
-                                scrBuffer[SCR_HEIGHT - 1][k].bg_col = BLACK;
-                            }
-
-                            // Erase the bottom line
-                            gfx_SetColor(BLACK);
-                            gfx_FillRectangle(SCR_OFFSET_X, (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y), SCR_WIDTH_P, FONT_HEIGHT);
-
-                            y -= FONT_HEIGHT;
-                            fontlib_SetCursorPosition(SCR_OFFSET_X, (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y));
+        if (key) {
+            
+            if (KEY_MAP[textIndex][key]) {
+                if (strlen(input) < (INPUT_LENGTH - 2)) {
+                    input[strlen(input)] = KEY_MAP[textIndex][key];
+                    input[strlen(input) + 1] = 0;
+                    lineWrap = lineWrap + FONT_WIDTH;
+                }
+            } else {
+                switch (key) {
+                    case 1: // Down
+                        // Seek to correct history offset
+                        histOffset = (histOffset > 2) ? histOffset - 2 : 0;
+                        settingsAppvar = ti_Open("CEshHist", "r");
+                        if (settingsAppvar && histOffset) {
+                            ti_Seek(0 - (histOffset * INPUT_LENGTH), SEEK_END, settingsAppvar);
+                            ti_Read(&input, sizeof(char), INPUT_LENGTH, settingsAppvar);
                         }
-                    }
-                    histOffset++;
-                    break;
-                case kb_Left:
-                    break;
-                case kb_Right:
-                    break;
-                case kb_Up:
-                    settingsAppvar = ti_Open("CEshHist", "r");
-                    if (settingsAppvar) {
-                        ti_Seek(0 - (histOffset * INPUT_LENGTH), SEEK_END, settingsAppvar);
-                        ti_Read(&input, sizeof(char), INPUT_LENGTH, settingsAppvar);
-                    }
-                    histOffset = (histOffset + 1) * (histOffset <= (ti_GetSize(settingsAppvar) / INPUT_LENGTH));
-                    ti_Close(settingsAppvar);
-                    lineWrap = offsetX + (strlen(input) * FONT_WIDTH) + FONT_WIDTH;
-                    while (lineWrap >= ((SCR_WIDTH - 1) * FONT_WIDTH)) {
-                        lineWrap -= ((SCR_WIDTH - 1) * FONT_WIDTH);
-                        y += FONT_HEIGHT;
-                        if ((cursorY >= ((SCR_HEIGHT - (strlen(input) / SCR_WIDTH)) * FONT_HEIGHT)) && (y >= (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y))) {
-                            cursorY -= FONT_HEIGHT;
-                            fontlib_ScrollWindowDown(); // Manually scroll window
+                        ti_Close(settingsAppvar);
+                        lineWrap = offsetX + (strlen(input) * FONT_WIDTH) + FONT_WIDTH;
+                        while (lineWrap >= ((SCR_WIDTH - 1) * FONT_WIDTH)) {
+                            lineWrap -= ((SCR_WIDTH - 1) * FONT_WIDTH);
+                            y += FONT_HEIGHT;
+                            if ((cursorY >= ((SCR_HEIGHT - (strlen(input) / SCR_WIDTH)) * FONT_HEIGHT)) && (y >= (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y))) {
+                                cursorY -= FONT_HEIGHT;
+                                fontlib_ScrollWindowDown(); // Manually scroll window
 
-                            // Scroll the contents of the screen buffer
-                            memmove(&scrBuffer[0][0], &scrBuffer[1][0], (BUFFER_SIZE - SCR_WIDTH) * sizeof(char_styled_t));
-                            for (k = 0; k < SCR_WIDTH; k++) {
-                                scrBuffer[SCR_HEIGHT - 1][k].character = ' ';
-                                scrBuffer[SCR_HEIGHT - 1][k].bold = false;
-                                scrBuffer[SCR_HEIGHT - 1][k].italic = false;
-                                scrBuffer[SCR_HEIGHT - 1][k].underline = false;
-                                scrBuffer[SCR_HEIGHT - 1][k].fg_col = WHITE;
-                                scrBuffer[SCR_HEIGHT - 1][k].bg_col = BLACK;
+                                // Scroll the contents of the screen buffer
+                                memmove(&scrBuffer[0][0], &scrBuffer[1][0], (BUFFER_SIZE - SCR_WIDTH) * sizeof(char_styled_t));
+                                for (k = 0; k < SCR_WIDTH; k++) {
+                                    scrBuffer[SCR_HEIGHT - 1][k].character = ' ';
+                                    scrBuffer[SCR_HEIGHT - 1][k].bold = false;
+                                    scrBuffer[SCR_HEIGHT - 1][k].italic = false;
+                                    scrBuffer[SCR_HEIGHT - 1][k].underline = false;
+                                    scrBuffer[SCR_HEIGHT - 1][k].fg_col = WHITE;
+                                    scrBuffer[SCR_HEIGHT - 1][k].bg_col = BLACK;
+                                }
+
+                                // Erase the bottom line
+                                gfx_SetColor(BLACK);
+                                gfx_FillRectangle(SCR_OFFSET_X, (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y), SCR_WIDTH_P, FONT_HEIGHT);
+
+                                y -= FONT_HEIGHT;
+                                fontlib_SetCursorPosition(SCR_OFFSET_X, (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y));
                             }
-
-                            // Erase the bottom line
-                            gfx_SetColor(BLACK);
-                            gfx_FillRectangle(SCR_OFFSET_X, (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y), SCR_WIDTH_P, FONT_HEIGHT);
-
-                            y -= FONT_HEIGHT;
-                            fontlib_SetCursorPosition(SCR_OFFSET_X, (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y));
                         }
-                    }
-                    break;
-                default:
-                    break;
+                        histOffset++;
+                        break;
+                    case 2: // Left
+                        break;
+                    case 3: // Right
+                        break;
+                    case 4: // Up
+                        settingsAppvar = ti_Open("CEshHist", "r");
+                        if (settingsAppvar) {
+                            ti_Seek(0 - (histOffset * INPUT_LENGTH), SEEK_END, settingsAppvar);
+                            ti_Read(&input, sizeof(char), INPUT_LENGTH, settingsAppvar);
+                        }
+                        histOffset = (histOffset + 1) * (histOffset <= (ti_GetSize(settingsAppvar) / INPUT_LENGTH));
+                        ti_Close(settingsAppvar);
+                        lineWrap = offsetX + (strlen(input) * FONT_WIDTH) + FONT_WIDTH;
+                        while (lineWrap >= ((SCR_WIDTH - 1) * FONT_WIDTH)) {
+                            lineWrap -= ((SCR_WIDTH - 1) * FONT_WIDTH);
+                            y += FONT_HEIGHT;
+                            if ((cursorY >= ((SCR_HEIGHT - (strlen(input) / SCR_WIDTH)) * FONT_HEIGHT)) && (y >= (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y))) {
+                                cursorY -= FONT_HEIGHT;
+                                fontlib_ScrollWindowDown(); // Manually scroll window
+
+                                // Scroll the contents of the screen buffer
+                                memmove(&scrBuffer[0][0], &scrBuffer[1][0], (BUFFER_SIZE - SCR_WIDTH) * sizeof(char_styled_t));
+                                for (k = 0; k < SCR_WIDTH; k++) {
+                                    scrBuffer[SCR_HEIGHT - 1][k].character = ' ';
+                                    scrBuffer[SCR_HEIGHT - 1][k].bold = false;
+                                    scrBuffer[SCR_HEIGHT - 1][k].italic = false;
+                                    scrBuffer[SCR_HEIGHT - 1][k].underline = false;
+                                    scrBuffer[SCR_HEIGHT - 1][k].fg_col = WHITE;
+                                    scrBuffer[SCR_HEIGHT - 1][k].bg_col = BLACK;
+                                }
+
+                                // Erase the bottom line
+                                gfx_SetColor(BLACK);
+                                gfx_FillRectangle(SCR_OFFSET_X, (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y), SCR_WIDTH_P, FONT_HEIGHT);
+
+                                y -= FONT_HEIGHT;
+                                fontlib_SetCursorPosition(SCR_OFFSET_X, (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y));
+                            }
+                        }
+                        break;
+                    case 9: // Enter
+                        done = true;
+                        break;
+                    case 15: // Clear
+                        for (i = 0; i <= 256; i++) {
+                            input[i] = 0;
+                        }
+                        lineWrap = offsetX + FONT_WIDTH;
+                        break;
+                    case 48: // Alpha
+                        if (textIndex != 2) {
+                            textIndex = 2;
+                        } else {
+                            textIndex = 3;
+                        }
+                        break;
+                    case 54: // 2nd
+                        if ((textIndex == 2) || (textIndex == 3)) {
+                            textIndex = 0;
+                        } else if (textIndex == 0) {
+                            textIndex = 1;
+                        } else if (textIndex == 1) {
+                            textIndex = 3;
+                        }
+                        break;
+                    case 55: // Mode
+                        if (textIndex < 2) {
+                            cesh_End();
+                        }
+                        break;
+                    case 56: // Del
+                        if (strlen(input)) {
+                            input[strlen(input)-1] = 0;
+                            lineWrap = lineWrap - 6;
+                        }
+                        break;
+                    default:
+                        break;
+                }
             }
+
+                switch (kb_Data[7]) {
+                    default:
+                        break;
+                }
 
             /* Immediately update screen output when input string changed */
 
@@ -1469,8 +954,6 @@ void get_user_input(const char *msg, const bool maskInput, const uint16_t offset
             gfx_BlitBuffer();
 
         }
-
-        prevkey = key;
 
     } while (!done);
 
@@ -1983,6 +1466,30 @@ uint16_t str_to_num(const char *string, const uint8_t length, const uint8_t base
     }
 
     return result;
+}
+
+// Gets GetCSC codes using keypadc; code by jacobly
+uint8_t get_single_key_pressed(void) {
+    static uint8_t last_key;
+    uint8_t only_key = 0;
+    kb_Scan();
+    for (uint8_t key = 1, group = 7; group; --group) {
+        for (uint8_t mask = 1; mask; mask <<= 1, ++key) {
+            if (kb_Data[group] & mask) {
+                if (only_key) {
+                    last_key = 0;
+                    return 0;
+                } else {
+                    only_key = key;
+                }
+            }
+        }
+    }
+    if (only_key == last_key) {
+        return 0;
+    }
+    last_key = only_key;
+    return only_key;
 }
 
 
