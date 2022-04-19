@@ -4,7 +4,7 @@
 // License: GPL v3                                            //
 // Description: A (ba)sh-inspired shell for the TI-84 Plus CE //
 ////////////////////////////////////////////////////////////////
-
+#include <debug.h>
 
 /* Keep these headers */
 #include <stdbool.h>
@@ -89,6 +89,7 @@ void parse_draw_string(const char *string);
 void draw_str_update_buf(const char *string);
 void draw_int_update_buf(int number, const uint8_t length);
 void draw_newline(void);
+void print_spaces(uint16_t x, uint16_t y, uint16_t num);
 uint16_t str_to_num(const char *string, const uint8_t length, const uint8_t base);
 uint8_t get_single_key_pressed(void);
 int run_prgm(char *prgm, char *args);
@@ -679,9 +680,14 @@ void parse_user_input(void) {
 void get_user_input(const char *msg, const bool maskInput, const uint16_t offsetX) {
 
     bool done = false;
-    uint16_t i, cursorY = fontlib_GetCursorY(), y = fontlib_GetCursorY();
-    int16_t j = 0, k, lineWrap;
-    uint8_t key, histOffset = 1;
+    uint16_t i, y,
+             cursorOffset = 0,
+             cursorY = 0;
+    int16_t j = 0,
+            k,
+            lineWrap;
+    uint8_t key,
+            histOffset = 1;
     char temp[2] = {0, 0};
 
     // Empty output
@@ -690,8 +696,8 @@ void get_user_input(const char *msg, const bool maskInput, const uint16_t offset
     }
 
     textIndex = 3; // Reset cursor state
-
     lineWrap = offsetX + FONT_WIDTH; // Initialize lineWrap with current X offset + cursor width
+    cursorY = fontlib_GetCursorY();
 
     gfx_BlitBuffer();
 
@@ -700,47 +706,36 @@ void get_user_input(const char *msg, const bool maskInput, const uint16_t offset
         key = get_single_key_pressed();
 
         // Blink Cursor
-        if (j == 0) { // Update screen output w/o cursor
+        if (j == 0) { // Update screen output w/ cursor
 
-            // Loop backwards through wrapped lines and clear everything back to original X offset until redraw
-            for (i = fontlib_GetCursorY(); i >= cursorY; i = i - FONT_HEIGHT) {
-                fontlib_Home();
-                if ((i == cursorY) && offsetX) {
-                    fontlib_SetCursorPosition(offsetX, fontlib_GetCursorY());
-                }
-                fontlib_ClearEOL();
-                fontlib_SetCursorPosition(fontlib_GetCursorX(), i);
-            }
-
+            print_spaces(offsetX, cursorY, strlen(msg) + strlen(input) + 1);
             draw_str_update_buf(msg);
 
             // Draw stars if masking input, otherwise output plain text
             if (maskInput) {
-                for (i = 1; i <= (int16_t)strlen(input); i++) {
-                    draw_str_update_buf("*");
+                for (i = 1; i <= strlen(input) + 1; i++) {
+                    if (i == strlen(input) - cursorOffset + 1) {
+                        temp[0] = CURSOR_INDEX[textIndex];
+                        fontlib_DrawString(temp); // Draw cursor
+                    } else {
+                        draw_str_update_buf("*");
+                    }
                 }
             } else {
+                i = strlen(input) - cursorOffset;
+                temp[0] = input[i];
+                input[i] = CURSOR_INDEX[textIndex];
+                if (!cursorOffset)
+                    input[i + 1] = 0;
                 draw_str_update_buf(input);
+                input[i] = temp[0];
             }
-
-            // Redraw cursor
-            temp[0] = CURSOR_INDEX[textIndex];
-            fontlib_DrawString(temp);
 
             gfx_BlitBuffer();
 
-        } else if (j == 500) { // Update screen output w/ cursor
+        } else if (j == 500) { // Update screen output w/o cursor
 
-            // Loop backwards through wrapped lines and clear everything back to original X offset until redraw
-            for (i = fontlib_GetCursorY(); i >= cursorY; i = i - FONT_HEIGHT) {
-                fontlib_Home();
-                if ((i == cursorY) && offsetX) {
-                    fontlib_SetCursorPosition(offsetX, fontlib_GetCursorY());
-                }
-                fontlib_ClearEOL();
-                fontlib_SetCursorPosition(fontlib_GetCursorX(), i);
-            }
-
+            print_spaces(offsetX, cursorY, strlen(msg) + strlen(input) + 1);
             draw_str_update_buf(msg);
 
             // Draw stars if masking input, otherwise output plain text
@@ -767,7 +762,7 @@ void get_user_input(const char *msg, const bool maskInput, const uint16_t offset
                 if (strlen(input) < (INPUT_LENGTH - 2)) {
                     input[strlen(input)] = KEY_MAP[textIndex][key];
                     input[strlen(input) + 1] = 0;
-                    lineWrap = lineWrap + FONT_WIDTH;
+                    lineWrap += FONT_WIDTH;
                 }
             } else {
                 switch (key) {
@@ -780,11 +775,10 @@ void get_user_input(const char *msg, const bool maskInput, const uint16_t offset
                             ti_Read(&input, sizeof(char), INPUT_LENGTH, settingsAppvar);
                         }
                         ti_Close(settingsAppvar);
-                        lineWrap = offsetX + (strlen(input) * FONT_WIDTH) + FONT_WIDTH;
-                        while (lineWrap >= ((SCR_WIDTH - 1) * FONT_WIDTH)) {
-                            lineWrap -= ((SCR_WIDTH - 1) * FONT_WIDTH);
-                            y += FONT_HEIGHT;
-                            if ((cursorY >= ((SCR_HEIGHT - (strlen(input) / SCR_WIDTH)) * FONT_HEIGHT)) && (y >= (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y))) {
+                        y = cursorY;
+                        lineWrap = offsetX + ((strlen(input) + 1) * FONT_WIDTH);
+                        while (lineWrap >= (((SCR_WIDTH - 1) * FONT_WIDTH) + SCR_OFFSET_X)) {
+                            if (y >= (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y)) {
                                 cursorY -= FONT_HEIGHT;
                                 fontlib_ScrollWindowDown(); // Manually scroll window
 
@@ -803,15 +797,27 @@ void get_user_input(const char *msg, const bool maskInput, const uint16_t offset
                                 gfx_SetColor(BLACK);
                                 gfx_FillRectangle(SCR_OFFSET_X, (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y), SCR_WIDTH_P, FONT_HEIGHT);
 
-                                y -= FONT_HEIGHT;
                                 fontlib_SetCursorPosition(SCR_OFFSET_X, (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y));
                             }
+                            lineWrap -= SCR_WIDTH * FONT_WIDTH;
+                            y += FONT_HEIGHT;
+                        }
+                        if (!histOffset) {
+                            print_spaces(offsetX, cursorY, strlen(msg) + strlen(input) + 1);
+                            for (i = 0; i <= 256; i++) {
+                                input[i] = 0;
+                            }
+                            lineWrap = offsetX + FONT_WIDTH;
                         }
                         histOffset++;
                         break;
                     case 2: // Left
+                        if (cursorOffset < strlen(input)) cursorOffset++;
+                        j = -1;
                         break;
                     case 3: // Right
+                        if (cursorOffset > 0) cursorOffset--;
+                        j = -1;
                         break;
                     case 4: // Up
                         settingsAppvar = ti_Open("CEshHist", "r");
@@ -821,11 +827,10 @@ void get_user_input(const char *msg, const bool maskInput, const uint16_t offset
                         }
                         histOffset = (histOffset + 1) * (histOffset <= (ti_GetSize(settingsAppvar) / INPUT_LENGTH));
                         ti_Close(settingsAppvar);
-                        lineWrap = offsetX + (strlen(input) * FONT_WIDTH) + FONT_WIDTH;
-                        while (lineWrap >= ((SCR_WIDTH - 1) * FONT_WIDTH)) {
-                            lineWrap -= ((SCR_WIDTH - 1) * FONT_WIDTH);
-                            y += FONT_HEIGHT;
-                            if ((cursorY >= ((SCR_HEIGHT - (strlen(input) / SCR_WIDTH)) * FONT_HEIGHT)) && (y >= (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y))) {
+                        y = cursorY;
+                        lineWrap = offsetX + ((strlen(input) + 1) * FONT_WIDTH);
+                        while (lineWrap >= (((SCR_WIDTH - 1) * FONT_WIDTH) + SCR_OFFSET_X)) {
+                            if (y >= (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y)) {
                                 cursorY -= FONT_HEIGHT;
                                 fontlib_ScrollWindowDown(); // Manually scroll window
 
@@ -844,19 +849,23 @@ void get_user_input(const char *msg, const bool maskInput, const uint16_t offset
                                 gfx_SetColor(BLACK);
                                 gfx_FillRectangle(SCR_OFFSET_X, (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y), SCR_WIDTH_P, FONT_HEIGHT);
 
-                                y -= FONT_HEIGHT;
                                 fontlib_SetCursorPosition(SCR_OFFSET_X, (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y));
                             }
+                            lineWrap -= SCR_WIDTH * FONT_WIDTH;
+                            y += FONT_HEIGHT;
                         }
                         break;
                     case 9: // Enter
                         done = true;
                         break;
                     case 15: // Clear
+                        // Clear text back
+                        print_spaces(offsetX, cursorY, strlen(msg) + strlen(input) + 1);
                         for (i = 0; i <= 256; i++) {
                             input[i] = 0;
                         }
                         lineWrap = offsetX + FONT_WIDTH;
+                        histOffset = 1;
                         break;
                     case 48: // Alpha
                         if (textIndex != 2) {
@@ -880,6 +889,7 @@ void get_user_input(const char *msg, const bool maskInput, const uint16_t offset
                         }
                         break;
                     case 56: // Del
+                        print_spaces(offsetX, cursorY, strlen(msg) + strlen(input) + 1);
                         if (strlen(input)) {
                             input[strlen(input)-1] = 0;
                             lineWrap = lineWrap - 6;
@@ -899,8 +909,8 @@ void get_user_input(const char *msg, const bool maskInput, const uint16_t offset
 
             // Update lineWrap and cursorY
 
-            if (lineWrap == (((SCR_WIDTH - 1) * FONT_WIDTH) + SCR_OFFSET_X)) {
-                lineWrap = 0;
+            if (lineWrap >= (((SCR_WIDTH - 1) * FONT_WIDTH) + SCR_OFFSET_X)) {
+                lineWrap = SCR_OFFSET_X - FONT_WIDTH;
                 if (fontlib_GetCursorY() == (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y)) {
                     cursorY -= FONT_HEIGHT;
                     fontlib_ScrollWindowDown(); // Manually scroll window
@@ -924,51 +934,41 @@ void get_user_input(const char *msg, const bool maskInput, const uint16_t offset
                 }
             }
 
-            // Loop backwards through wrapped lines and clear everything back to original X offset until redraw
-            for (i = fontlib_GetCursorY(); i >= cursorY; i = i - FONT_HEIGHT) {
-                fontlib_Home();
-                if ((i == cursorY) && offsetX) {
-                    fontlib_SetCursorPosition(offsetX, fontlib_GetCursorY());
-                }
-                fontlib_ClearEOL();
-                fontlib_SetCursorPosition(fontlib_GetCursorX(), i);
-            }
-
+            print_spaces(offsetX, cursorY, strlen(msg) + strlen(input) + 1);
             draw_str_update_buf(msg);
 
             // Draw stars if masking input, otherwise output plain text
             if (maskInput) {
-                for (i = 1; i <= (int16_t)strlen(input); i++) {
-                    draw_str_update_buf("*");
+                for (i = 1; i <= strlen(input) + 1; i++) {
+                    if ((i == strlen(input) - cursorOffset + 1) && (j < 500)) {
+                        temp[0] = CURSOR_INDEX[textIndex];
+                        fontlib_DrawString(temp); // Draw cursor
+                    } else {
+                        draw_str_update_buf("*");
+                    }
                 }
             } else {
+                i = strlen(input) - cursorOffset;
+                temp[0] = input[i];
+                if (j < 500) input[i] = CURSOR_INDEX[textIndex];
+                if (!cursorOffset)
+                    input[i + 1] = 0;
                 draw_str_update_buf(input);
+                input[i] = temp[0];
             }
-
-            // Redraw cursor
-            if (j < 500) {
-                temp[0] = CURSOR_INDEX[textIndex];
-                fontlib_DrawString(temp);
-            }
-
+            
             gfx_BlitBuffer();
 
         }
-
+        
+        // Suppress autoscroll
+        shouldScroll = false;
+        
     } while (!done);
 
     /* When user hits enter, update screen output without cursor */
 
-    // Loop backwards through wrapped lines and clear everything back to original X offset until redraw
-    for (i = fontlib_GetCursorY(); i >= cursorY; i = i - FONT_HEIGHT) {
-        fontlib_Home();
-        if ((i == cursorY) && offsetX) {
-            fontlib_SetCursorPosition(offsetX, fontlib_GetCursorY());
-        }
-        fontlib_ClearEOL();
-        fontlib_SetCursorPosition(fontlib_GetCursorX(), i);
-    }
-
+    print_spaces(offsetX, cursorY, strlen(msg) + strlen(input) + 1);
     draw_str_update_buf(msg);
 
     // Draw stars if masking input, otherwise output plain text
@@ -979,7 +979,7 @@ void get_user_input(const char *msg, const bool maskInput, const uint16_t offset
     } else {
         draw_str_update_buf(input);
     }
-
+    
     gfx_BlitBuffer();
 }
 
@@ -989,7 +989,9 @@ void parse_draw_string(const char *string) {
     uint16_t i, j, x;
     uint8_t k, l, m, y;
     char temp[2] = {0, 0};
-    bool displayNextChar, fGcolorHasBeenSet, bGcolorHasBeenSet;
+    bool displayNextChar,
+         fGcolorHasBeenSet,
+         bGcolorHasBeenSet;
 
     // Empty input
     for (i = 0; i <= INPUT_LENGTH; i++) {
@@ -1450,10 +1452,31 @@ void draw_newline(void) {
     }
 }
 
+// Print spaces. That's literally it
+void print_spaces(uint16_t x, uint16_t y, uint16_t num) {
+    
+    uint16_t i;
+    
+    if (x) {
+        fontlib_SetCursorPosition(x, y);
+    } else {
+        fontlib_SetCursorPosition(SCR_OFFSET_X, y);
+    }
+    for (i = 0; i < num; i++) {
+        fontlib_DrawString(" ");
+    }
+    if (x) {
+        fontlib_SetCursorPosition(x, y);
+    } else {
+        fontlib_SetCursorPosition(SCR_OFFSET_X, y);
+    }
+}
+
 // Convert any base (up to base 36) string literal to 8-bit decimal integer
 uint16_t str_to_num(const char *string, const uint8_t length, const uint8_t base) {
 
-    uint16_t result = 0, j = 1;
+    uint16_t result = 0,
+             j = 1;
     uint8_t i;
     
     // Loop through string, convert each ASCII character to it's decimal form, and multiply it times the current place value
@@ -1468,7 +1491,7 @@ uint16_t str_to_num(const char *string, const uint8_t length, const uint8_t base
     return result;
 }
 
-// Gets GetCSC codes using keypadc; code by jacobly
+// Get GetCSC codes using keypadc; code by jacobly
 uint8_t get_single_key_pressed(void) {
     static uint8_t last_key;
     uint8_t only_key = 0;
@@ -1492,8 +1515,7 @@ uint8_t get_single_key_pressed(void) {
     return only_key;
 }
 
-
-// Saves the shell state and runs a program
+// Save the shell state and runs a program
 int run_prgm(char *prgm, char *args) {
 
     int ret;
