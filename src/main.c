@@ -80,9 +80,10 @@ typedef struct __char_styled__ {
 /* Function declarations */
 void cesh_Init(void);
 void cesh_Setup(void);
+void cesh_Splash(void);
 void cesh_Shell(void);
-void cesh_End(void);
 void cesh_PreGC(void);
+void cesh_End(void);
 void parse_user_input(void);
 void get_user_input(const char *msg, const bool maskInput, const bool disableRecall, const uint16_t offsetX);
 void parse_draw_string(const char *string);
@@ -271,6 +272,8 @@ void cesh_Setup(void) {
 
     uint8_t i;
     char pwd_tmp[USER_PWD_LENGTH];
+    
+    cesh_Splash();
 
     // Get new username
     draw_newline();
@@ -320,6 +323,32 @@ void cesh_Setup(void) {
     draw_newline();
 }
 
+// Splash screen
+void cesh_Splash(void) {
+    
+    uint8_t i, sec, min, hr;
+    
+    boot_GetTime(&sec, &min, &hr);
+    srandom(sec + (min * 60) + (hr * 360));
+    
+    gfx_FillScreen(BLACK);
+    gfx_Sprite(imgSplash, (LCD_WIDTH - imgSplash_width) / 2, (LCD_HEIGHT - imgSplash_height) * 7 / 24);
+    fontlib_SetCursorPosition((LCD_WIDTH - 29*FONT_WIDTH) / 2, (LCD_HEIGHT - FONT_HEIGHT) * 2 / 3);
+    fontlib_DrawString("Initializing first-time setup");
+    for (i = 0; i < (random() % 18) + 6; i++) {
+        gfx_SetColor(inRange((i % 6),1,3) ? WHITE : BLACK);
+        gfx_FillCircle((LCD_WIDTH / 2) - 18, LCD_HEIGHT * 3 / 4, 3);
+        gfx_SetColor(inRange((i % 6),2,4) ? WHITE : BLACK);
+        gfx_FillCircle(LCD_WIDTH / 2, LCD_HEIGHT * 3 / 4, 3);
+        gfx_SetColor(inRange((i % 6),3,5) ? WHITE : BLACK);
+        gfx_FillCircle((LCD_WIDTH / 2) + 18, LCD_HEIGHT * 3 / 4, 3);
+        gfx_BlitBuffer();
+        delay(800);
+    }
+    gfx_FillScreen(BLACK);
+    fontlib_SetCursorPosition(SCR_OFFSET_X, SCR_OFFSET_Y);
+}
+
 // Main shell loop
 void cesh_Shell(void) {
 
@@ -329,7 +358,7 @@ void cesh_Shell(void) {
     uint16_t yr;
     uint16_t dateTimeTemp[7];
     bool fts = false;
-
+    
     if (!sdRetFromPrgm) {
         // Startup text
         draw_str_update_buf("CEsh v0.1a - The TI-84 Plus CE terminal");
@@ -465,6 +494,17 @@ void cesh_Shell(void) {
     } while (strcmp(input, "exit")); // Keep going until user types exit
 }
 
+// Handle GarbageCollect
+void cesh_PreGC(void) {
+
+    // Save screen state
+    settingsAppvar = ti_Open("CEshSBuf", "w+");
+    ti_Write(&scrBuffer, sizeof(char_styled_t), BUFFER_SIZE, settingsAppvar);
+    ti_Close(settingsAppvar);
+
+    gfx_End();
+}
+
 // End program
 void cesh_End(void) {
     gfx_End();
@@ -481,17 +521,6 @@ void cesh_End(void) {
     ti_Close(settingsAppvar);
 
     exit(0);
-}
-
-// Handle GarbageCollect
-void cesh_PreGC(void) {
-
-    // Save screen state
-    settingsAppvar = ti_Open("CEshSBuf", "w+");
-    ti_Write(&scrBuffer, sizeof(char_styled_t), BUFFER_SIZE, settingsAppvar);
-    ti_Close(settingsAppvar);
-
-    gfx_End();
 }
 
 // Parse user input
