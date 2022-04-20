@@ -23,23 +23,23 @@ void parse_user_input(void) {
     uint8_t numargs = 1;
     uint8_t *arglocs = malloc(1);
     bool inQuotes = false;
-    
+
     appvarSlot = ti_Open("CEshHist", "r+");
-    if (!appvarSlot) 
+    if (!appvarSlot)
         appvarSlot = ti_Open("CEshHist", "w+");
     size = ti_GetSize(appvarSlot);
-    
+
     // If it has fewer than 250 entries, seek to the end of the file
     if (size < (250 * INPUT_LENGTH)) {
         ti_Seek(0, SEEK_END, appvarSlot);
-        
+
     // Otherwise, delete the oldest entry
-    } else { 
+    } else {
         ptr = ti_GetDataPtr(appvarSlot);
         memmove(ptr, ptr + INPUT_LENGTH, size - INPUT_LENGTH);
         ti_Seek(size - INPUT_LENGTH, SEEK_SET, appvarSlot);
     }
-    
+
     // Add command to history buffer & close appvar
     ti_Write(&input, sizeof(char), INPUT_LENGTH, appvarSlot);
     ti_Close(appvarSlot);
@@ -83,10 +83,10 @@ void parse_user_input(void) {
 
         startOnNewLine = true;
         draw_newline();
-        
+
         j = 1; // 1 until args are parsed, then 0
         k = 1; // 1 if parsing, 0 if not
-        
+
         for (i = 1; i < numargs; i++) {
             if (j) {
                 if (!strcmp(&input[arglocs[i]], "-n")) {
@@ -115,10 +115,10 @@ void parse_user_input(void) {
 
         startOnNewLine = false;
         draw_newline();
-        
+
         appvarSlot = ti_Open("CEshHist", "r");
         size = ti_GetSize(appvarSlot);
-        
+
         if (numargs > 1) {
             if (!strcmp(&input[arglocs[1]], "-c")) {
                 ti_Delete("CEshHist");
@@ -132,7 +132,7 @@ void parse_user_input(void) {
                 for (i = (size / INPUT_LENGTH) - j; i < (size / INPUT_LENGTH); i++) {
                     ti_Seek(i * INPUT_LENGTH, SEEK_SET, appvarSlot);
                     ti_Read(&input, sizeof(char), INPUT_LENGTH, appvarSlot);
-                    
+
                     draw_int_update_buf(i + 1, 1 + ((i + 1) >= 10) + ((i + 1) >= 100));
                     draw_str_update_buf("  ");
                     draw_str_update_buf(input);
@@ -143,14 +143,14 @@ void parse_user_input(void) {
             for (i = 0; i < (size / INPUT_LENGTH); i++) {
                 ti_Seek(i * INPUT_LENGTH, SEEK_SET, appvarSlot);
                 ti_Read(&input, sizeof(char), INPUT_LENGTH, appvarSlot);
-                
+
                 draw_int_update_buf(i + 1, 1 + ((i + 1) >= 10) + ((i + 1) >= 100));
                 draw_str_update_buf("  ");
                 draw_str_update_buf(input);
                 parse_draw_string("\\n");
             }
         }
-        
+
         ti_Close(appvarSlot);
 
     // Debug command (remove in release)
@@ -287,7 +287,7 @@ void get_user_input(const char *msg, const bool maskInput, const bool disableRec
 
         // Update output
         if (key) {
-            
+
             if (KEY_MAP[textIndex][key]) {
                 if (strlen(input) < (INPUT_LENGTH - 2)) {
                     if (cursorOffset) {
@@ -486,7 +486,7 @@ void get_user_input(const char *msg, const bool maskInput, const bool disableRec
 
             print_spaces(offsetX, cursorY, strlen(msg) + strlen(input) + 1);
             draw_str_update_buf(msg);
-            
+
             // Make sure cursor offset does not exceed the size of input
             if (cursorOffset > strlen(input)) cursorOffset = strlen(input);
 
@@ -509,14 +509,14 @@ void get_user_input(const char *msg, const bool maskInput, const bool disableRec
                 draw_str_update_buf(input);
                 input[i] = temp[0];
             }
-            
+
             gfx_BlitBuffer();
 
         }
-        
+
         // Suppress autoscroll
         shouldScroll = false;
-        
+
     } while (!done);
 
     /* When user hits enter, update screen output without cursor */
@@ -532,7 +532,7 @@ void get_user_input(const char *msg, const bool maskInput, const bool disableRec
     } else {
         draw_str_update_buf(input);
     }
-    
+
     gfx_BlitBuffer();
 }
 

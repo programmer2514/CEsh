@@ -17,14 +17,14 @@
 
 void parse_draw_string(const char *string) {
 
+    static uint16_t cursorPos[2] = {SCR_OFFSET_X, SCR_OFFSET_Y};
     uint16_t i, j, x;
     uint8_t k, l, m, y;
-    char temp[2] = {0, 0}, 
+    char temp[2] = {0, 0},
          parserData[INPUT_LENGTH];
     bool displayNextChar,
          fGcolorHasBeenSet,
          bGcolorHasBeenSet;
-    static uint16_t cursorPos[2] = {SCR_OFFSET_X, SCR_OFFSET_Y};
 
     // Empty input
     for (i = 0; i <= INPUT_LENGTH; i++) {
@@ -483,9 +483,9 @@ void draw_newline(void) {
 }
 
 void print_spaces(uint16_t x, uint16_t y, uint16_t num) {
-    
+
     uint16_t i;
-    
+
     if (x) {
         fontlib_SetCursorPosition(x, y);
     } else {

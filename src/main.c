@@ -56,17 +56,15 @@ int main(void)
 }
 
 
-/* Functions */
-
 // Initialize program
 void cesh_Init(void) {
 
     uint8_t i, j;
     uint16_t cursorPos[2] = {SCR_OFFSET_X, SCR_OFFSET_Y};
     uint8_t textColors[2] = {WHITE, BLACK};
-    bool sdUnderlineText = false;
-    bool sdItalicText = false;
-    bool sdBoldText = false;
+    bool sdUnderlineText = false,
+         sdItalicText = false,
+         sdBoldText = false;
 
     // Empty user/pwd variables
     for (i = 0; i < USER_PWD_LENGTH; i++) {
@@ -186,7 +184,7 @@ void cesh_Setup(void) {
 
     uint8_t i;
     char pwd_tmp[USER_PWD_LENGTH];
-    
+
     cesh_Splash();
 
     // Get new username
@@ -239,12 +237,12 @@ void cesh_Setup(void) {
 
 // Splash screen
 void cesh_Splash(void) {
-    
+
     uint8_t i, sec, min, hr;
-    
+
     boot_GetTime(&sec, &min, &hr);
     srandom(sec + (min * 60) + (hr * 360));
-    
+
     gfx_FillScreen(BLACK);
     gfx_Sprite(imgSplash, (LCD_WIDTH - imgSplash_width) / 2, (LCD_HEIGHT - imgSplash_height) * 7 / 24);
     fontlib_SetCursorPosition((LCD_WIDTH - 29*FONT_WIDTH) / 2, (LCD_HEIGHT - FONT_HEIGHT) * 2 / 3);
@@ -266,14 +264,12 @@ void cesh_Splash(void) {
 // Main shell loop
 void cesh_Shell(void) {
 
-    uint8_t temp;
-    uint8_t i;
-    uint8_t day, mon, sec, min, hr;
-    uint16_t yr;
-    uint16_t dateTimeTemp[7];
-    bool fts = false;
-    bool lastLoginHappened = false;
-    
+    uint8_t temp, i, day, mon, sec, min, hr;
+    uint16_t yr,
+             dateTimeTemp[7];
+    bool fts = false,
+         lastLoginHappened = false;
+
     if (!isRetFromPrgm) {
         // Startup text
         draw_str_update_buf("CEsh v0.1a - The TI-84 Plus CE terminal");
@@ -289,9 +285,9 @@ void cesh_Shell(void) {
             cesh_Setup();
             fts = true;
         }
-        
+
         temp = fontlib_GetCursorY();
-        
+
         // Login & password prompt
         do {
             gfx_SetColor(fontlib_GetBackgroundColor());
