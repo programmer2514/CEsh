@@ -4,7 +4,7 @@
 
 NAME         ?= CESH
 ICON         ?= icon.png
-DESCRIPTION  ?= "Crappily Executed SHell v0.1a                                  :P"
+DESCRIPTION  ?= "CEsh - The TI-84 Plus CE Shell"
 COMPRESSED   ?= YES
 ARCHIVED     ?= YES
 
