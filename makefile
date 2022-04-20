@@ -2,34 +2,47 @@
 # Program Options
 # ----------------------------
 
-NAME         ?= CESH
-ICON         ?= icon.png
-DESCRIPTION  ?= "CEsh - The TI-84 Plus CE Shell"
-COMPRESSED   ?= YES
-ARCHIVED     ?= YES
+NAME         = CESH
+ICON         = icon.png
+DESCRIPTION  = "CEsh - The TI-84 Plus CE Shell"
+COMPRESSED   = YES
+ARCHIVED     = YES
 
-CFLAGS = -Wall -Wextra -Oz
-CXXFLAGS = -Wall -Wextra -Oz
+CFLAGS    = -Wall -Wextra -Oz
+CXXFLAGS  = -Wall -Wextra -Oz
 
-FONTDIR ?= $(SRCDIR)/fonts
+FONTDIR  = $(SRCDIR)/fonts
+
+FONT          = $(FONTDIR)/terminusfont.fnt
+BOLDFONT      = $(FONTDIR)/terminusfontbold.fnt
+ITALFONT      = $(FONTDIR)/terminusfontitalic.fnt
+BOLDITALFONT  = $(FONTDIR)/terminusfontbolditalic.fnt
+
+FONT_INC          = $(FONTDIR)/terminusfont.inc
+BOLDFONT_INC      = $(FONTDIR)/terminusfontbold.inc
+ITALFONT_INC      = $(FONTDIR)/terminusfontitalic.inc
+BOLDITALFONT_INC  = $(FONTDIR)/terminusfontbolditalic.inc
+
+DEPS  = $(FONT_INC) $(BOLDFONT_INC) $(ITALFONT_INC) $(BOLDITALFONT_INC)
+
+# ----------------------------
 
 include $(shell cedev-config --makefile)
 
-# This is a roundabout way to tell make that fonts.c depends on testfont.inc.
-# It does it by saying the compiled object code depends on the .inc file.
-$(OBJDIR)/fonts/fonts.src: $(FONTDIR)/terminusfont.inc
-$(OBJDIR)/fonts/fonts.src: $(FONTDIR)/terminusfontbold.inc
-$(OBJDIR)/fonts/fonts.src: $(FONTDIR)/terminusfontitalic.inc
-$(OBJDIR)/fonts/fonts.src: $(FONTDIR)/terminusfontbolditalic.inc
+# ----------------------------
 
-$(FONTDIR)/terminusfont.inc: $(FONTDIR)/terminusfont.fnt
-	convfont -o carray -f $(FONTDIR)/terminusfont.fnt $(FONTDIR)/terminusfont.inc
+$(FONT_INC): $(FONT)
+	$(Q)$(call MKDIR,$(@D))
+	$(Q)convfont -o carray -f $< -a 1 -b 1 -w bold -c 2 -x 9 -l 0x0B -Z $@
 
-$(FONTDIR)/terminusfontbold.inc: $(FONTDIR)/terminusfontbold.fnt
-	convfont -o carray -f $(FONTDIR)/terminusfontbold.fnt $(FONTDIR)/terminusfontbold.inc
+$(BOLDFONT_INC): $(BOLDFONT)
+	$(Q)$(call MKDIR,$(@D))
+	$(Q)convfont -o carray -f $< -a 1 -b 1 -w bold -c 2 -x 9 -l 0x0B -Z $@
 
-$(FONTDIR)/terminusfontitalic.inc: $(FONTDIR)/terminusfontitalic.fnt
-	convfont -o carray -f $(FONTDIR)/terminusfontitalic.fnt $(FONTDIR)/terminusfontitalic.inc
+$(ITALFONT_INC): $(ITALFONT)
+	$(Q)$(call MKDIR,$(@D))
+	$(Q)convfont -o carray -f $< -a 1 -b 1 -w bold -c 2 -x 9 -l 0x0B -Z $@
 
-$(FONTDIR)/terminusfontbolditalic.inc: $(FONTDIR)/terminusfontbolditalic.fnt
-	convfont -o carray -f $(FONTDIR)/terminusfontbolditalic.fnt $(FONTDIR)/terminusfontbolditalic.inc
+$(BOLDITALFONT_INC): $(BOLDITALFONT)
+	$(Q)$(call MKDIR,$(@D))
+	$(Q)convfont -o carray -f $< -a 1 -b 1 -w bold -c 2 -x 9 -l 0x0B -Z $@

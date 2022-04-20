@@ -2,5 +2,6 @@ obj/
 bin/
 src/gfx/*.c
 src/gfx/*.h
+src/fonts/*.inc
 CEsh.txt
 PacMan.8xp

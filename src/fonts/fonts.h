@@ -1,6 +1,6 @@
-#ifndef MYFONTS_H
-#define MYFONTS_H
-#include <tice.h>
+#ifndef CESH_FONTS
+#define CESH_FONTS
+
 #include <fontlibc.h>
 
 extern const fontlib_font_t *terminus_font;
