@@ -813,6 +813,7 @@ void get_user_input(const char *msg, const bool maskInput, const bool disableRec
                 switch (key) {
                     case 1: // Down
                         if (!disableRecall) {
+                            print_spaces(offsetX, cursorY, strlen(msg) + strlen(input) + 1);
                             // Seek to correct history offset
                             histOffset = (histOffset > 2) ? histOffset - 2 : 0;
                             settingsAppvar = ti_Open("CEshHist", "r");
@@ -849,7 +850,6 @@ void get_user_input(const char *msg, const bool maskInput, const bool disableRec
                                 y += FONT_HEIGHT;
                             }
                             if (!histOffset) {
-                                print_spaces(offsetX, cursorY, strlen(msg) + strlen(input) + 1);
                                 for (i = 0; i <= 256; i++) {
                                     input[i] = 0;
                                 }
@@ -869,6 +869,7 @@ void get_user_input(const char *msg, const bool maskInput, const bool disableRec
                         break;
                     case 4: // Up
                         if (!disableRecall) {
+                            print_spaces(offsetX, cursorY, strlen(msg) + strlen(input) + 1);
                             settingsAppvar = ti_Open("CEshHist", "r");
                             if (settingsAppvar) {
                                 ti_Seek(0 - (histOffset * INPUT_LENGTH), SEEK_END, settingsAppvar);
