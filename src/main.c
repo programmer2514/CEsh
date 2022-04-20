@@ -63,7 +63,7 @@
 
 #define BUFFER_SIZE (SCR_WIDTH * SCR_HEIGHT)
 
-#define getDayOfWeek(yr,mon,day) (((day) += (mon) < 3 ? (yr)-- : (yr) - 2, 23*(mon)/9 + (day) + 4 + (yr)/4- (yr)/100 + (yr)/400)%7)
+#define getDayOfWeek(yr,mon,day) (((day) += (mon) < 3 ? (yr)-- : (yr) - 2, 23*(mon)/9 + (day) + 4 + (yr)/4 - (yr)/100 + (yr)/400)%7)
 #define inRange(input,min,max) ((input)>=(min)&&(input)<=(max))
 
 /* Structure definitions */
@@ -84,7 +84,7 @@ void cesh_Shell(void);
 void cesh_End(void);
 void cesh_PreGC(void);
 void parse_user_input(void);
-void get_user_input(const char *msg, const bool maskInput, const uint16_t offsetX);
+void get_user_input(const char *msg, const bool maskInput, const bool disableRecall, const uint16_t offsetX);
 void parse_draw_string(const char *string);
 void draw_str_update_buf(const char *string);
 void draw_int_update_buf(int number, const uint8_t length);
@@ -276,27 +276,27 @@ void cesh_Setup(void) {
     draw_newline();
     draw_str_update_buf("Please create a default CEsh user account.");
     draw_newline();
-    get_user_input("Enter new CEsh username: ", false, 0);
+    get_user_input("Enter new CEsh username: ", false, true, 0);
 
-    for (i = 0; i < USER_PWD_LENGTH; i++) {
+    for (i = 0; i < USER_PWD_LENGTH - 1; i++) {
         user[i] = input[i];
     }
 
     do {
         // Get new password
         draw_newline();
-        get_user_input("New password: ", true, 0);
+        get_user_input("New password: ", true, true, 0);
 
-        for (i = 0; i < USER_PWD_LENGTH; i++) {
+        for (i = 0; i < USER_PWD_LENGTH - 1; i++) {
             pwd_tmp[i] = input[i];
         }
 
         // Confirm new password
         draw_newline();
-        get_user_input("Confirm password: ", true, 0);
+        get_user_input("Confirm password: ", true, true, 0);
         draw_newline();
 
-        for (i = 0; i < USER_PWD_LENGTH; i++) {
+        for (i = 0; i < USER_PWD_LENGTH - 1; i++) {
             pwd[i] = input[i];
         }
 
@@ -345,17 +345,28 @@ void cesh_Shell(void) {
             cesh_Setup();
             fts = true;
         }
-
+        
+        temp = fontlib_GetCursorY();
+        
         // Login & password prompt
         do {
+            gfx_SetColor(fontlib_GetBackgroundColor());
+            gfx_FillRectangle(SCR_OFFSET_X, temp, SCR_WIDTH_P, SCR_HEIGHT_P - temp);
+            fontlib_SetCursorPosition(SCR_OFFSET_X, temp);
             draw_str_update_buf(calcName);
-            get_user_input(" login: ", false, (strlen(calcName) * FONT_WIDTH) + SCR_OFFSET_X);
+            get_user_input(" login: ", false, true, (strlen(calcName) * FONT_WIDTH) + SCR_OFFSET_X);
+            input[USER_PWD_LENGTH] = 0;
         } while (strcmp(input, user));
 
         draw_newline();
+        temp = fontlib_GetCursorY();
 
         do {
-            get_user_input("Password: ", true, 0);
+            gfx_SetColor(fontlib_GetBackgroundColor());
+            gfx_FillRectangle(SCR_OFFSET_X, temp, SCR_WIDTH_P, SCR_HEIGHT_P - temp);
+            fontlib_SetCursorPosition(SCR_OFFSET_X, temp);
+            get_user_input("Password: ", true, true, 0);
+            input[USER_PWD_LENGTH] = 0;
         } while (strcmp(input, pwd));
 
         // Store date and time
@@ -448,7 +459,7 @@ void cesh_Shell(void) {
         draw_str_update_buf(path);
         fontlib_SetForegroundColor(temp);
 
-        get_user_input("$ ", false, fontlib_GetCursorX());
+        get_user_input("$ ", false, false, fontlib_GetCursorX());
         if (strlen(input)) parse_user_input();
 
     } while (strcmp(input, "exit")); // Keep going until user types exit
@@ -677,7 +688,7 @@ void parse_user_input(void) {
 }
 
 // Get user input
-void get_user_input(const char *msg, const bool maskInput, const uint16_t offsetX) {
+void get_user_input(const char *msg, const bool maskInput, const bool disableRecall, const uint16_t offsetX) {
 
     bool done = false;
     uint16_t i, y,
@@ -717,7 +728,7 @@ void get_user_input(const char *msg, const bool maskInput, const uint16_t offset
                     if (i == strlen(input) - cursorOffset + 1) {
                         temp[0] = CURSOR_INDEX[textIndex];
                         fontlib_DrawString(temp); // Draw cursor
-                    } else {
+                    } else if (i <= strlen(input)) {
                         draw_str_update_buf("*");
                     }
                 }
@@ -760,56 +771,64 @@ void get_user_input(const char *msg, const bool maskInput, const uint16_t offset
             
             if (KEY_MAP[textIndex][key]) {
                 if (strlen(input) < (INPUT_LENGTH - 2)) {
-                    input[strlen(input)] = KEY_MAP[textIndex][key];
+                    if (cursorOffset) {
+                        memmove(&input[strlen(input) - cursorOffset], &input[strlen(input) - cursorOffset - 1], strlen(input) - (strlen(input) - cursorOffset - 1));
+                        input[strlen(input) - cursorOffset - 1] = KEY_MAP[textIndex][key];
+                    } else {
+                        input[strlen(input)] = KEY_MAP[textIndex][key];
+                    }
                     input[strlen(input) + 1] = 0;
                     lineWrap += FONT_WIDTH;
                 }
             } else {
                 switch (key) {
                     case 1: // Down
-                        // Seek to correct history offset
-                        histOffset = (histOffset > 2) ? histOffset - 2 : 0;
-                        settingsAppvar = ti_Open("CEshHist", "r");
-                        if (settingsAppvar && histOffset) {
-                            ti_Seek(0 - (histOffset * INPUT_LENGTH), SEEK_END, settingsAppvar);
-                            ti_Read(&input, sizeof(char), INPUT_LENGTH, settingsAppvar);
-                        }
-                        ti_Close(settingsAppvar);
-                        y = cursorY;
-                        lineWrap = offsetX + ((strlen(input) + 1) * FONT_WIDTH);
-                        while (lineWrap >= (((SCR_WIDTH - 1) * FONT_WIDTH) + SCR_OFFSET_X)) {
-                            if (y >= (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y)) {
-                                cursorY -= FONT_HEIGHT;
-                                fontlib_ScrollWindowDown(); // Manually scroll window
+                        if (!disableRecall) {
+                            // Seek to correct history offset
+                            histOffset = (histOffset > 2) ? histOffset - 2 : 0;
+                            settingsAppvar = ti_Open("CEshHist", "r");
+                            if (settingsAppvar && histOffset) {
+                                ti_Seek(0 - (histOffset * INPUT_LENGTH), SEEK_END, settingsAppvar);
+                                ti_Read(&input, sizeof(char), INPUT_LENGTH, settingsAppvar);
+                            }
+                            ti_Close(settingsAppvar);
+                            y = cursorY;
+                            lineWrap = offsetX + ((strlen(input) + 1) * FONT_WIDTH);
+                            while (lineWrap >= (((SCR_WIDTH - 1) * FONT_WIDTH) + SCR_OFFSET_X)) {
+                                if (y >= (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y)) {
+                                    cursorY -= FONT_HEIGHT;
+                                    fontlib_ScrollWindowDown(); // Manually scroll window
 
-                                // Scroll the contents of the screen buffer
-                                memmove(&scrBuffer[0][0], &scrBuffer[1][0], (BUFFER_SIZE - SCR_WIDTH) * sizeof(char_styled_t));
-                                for (k = 0; k < SCR_WIDTH; k++) {
-                                    scrBuffer[SCR_HEIGHT - 1][k].character = ' ';
-                                    scrBuffer[SCR_HEIGHT - 1][k].bold = false;
-                                    scrBuffer[SCR_HEIGHT - 1][k].italic = false;
-                                    scrBuffer[SCR_HEIGHT - 1][k].underline = false;
-                                    scrBuffer[SCR_HEIGHT - 1][k].fg_col = WHITE;
-                                    scrBuffer[SCR_HEIGHT - 1][k].bg_col = BLACK;
+                                    // Scroll the contents of the screen buffer
+                                    memmove(&scrBuffer[0][0], &scrBuffer[1][0], (BUFFER_SIZE - SCR_WIDTH) * sizeof(char_styled_t));
+                                    for (k = 0; k < SCR_WIDTH; k++) {
+                                        scrBuffer[SCR_HEIGHT - 1][k].character = ' ';
+                                        scrBuffer[SCR_HEIGHT - 1][k].bold = false;
+                                        scrBuffer[SCR_HEIGHT - 1][k].italic = false;
+                                        scrBuffer[SCR_HEIGHT - 1][k].underline = false;
+                                        scrBuffer[SCR_HEIGHT - 1][k].fg_col = WHITE;
+                                        scrBuffer[SCR_HEIGHT - 1][k].bg_col = BLACK;
+                                    }
+
+                                    // Erase the bottom line
+                                    gfx_SetColor(BLACK);
+                                    gfx_FillRectangle(SCR_OFFSET_X, (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y), SCR_WIDTH_P, FONT_HEIGHT);
+
+                                    fontlib_SetCursorPosition(SCR_OFFSET_X, (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y));
                                 }
-
-                                // Erase the bottom line
-                                gfx_SetColor(BLACK);
-                                gfx_FillRectangle(SCR_OFFSET_X, (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y), SCR_WIDTH_P, FONT_HEIGHT);
-
-                                fontlib_SetCursorPosition(SCR_OFFSET_X, (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y));
+                                lineWrap -= SCR_WIDTH * FONT_WIDTH;
+                                y += FONT_HEIGHT;
                             }
-                            lineWrap -= SCR_WIDTH * FONT_WIDTH;
-                            y += FONT_HEIGHT;
-                        }
-                        if (!histOffset) {
-                            print_spaces(offsetX, cursorY, strlen(msg) + strlen(input) + 1);
-                            for (i = 0; i <= 256; i++) {
-                                input[i] = 0;
+                            if (!histOffset) {
+                                print_spaces(offsetX, cursorY, strlen(msg) + strlen(input) + 1);
+                                for (i = 0; i <= 256; i++) {
+                                    input[i] = 0;
+                                }
+                                lineWrap = offsetX + FONT_WIDTH;
                             }
-                            lineWrap = offsetX + FONT_WIDTH;
+                            histOffset++;
+                            cursorOffset = 0;
                         }
-                        histOffset++;
                         break;
                     case 2: // Left
                         if (cursorOffset < strlen(input)) cursorOffset++;
@@ -820,39 +839,42 @@ void get_user_input(const char *msg, const bool maskInput, const uint16_t offset
                         j = -1;
                         break;
                     case 4: // Up
-                        settingsAppvar = ti_Open("CEshHist", "r");
-                        if (settingsAppvar) {
-                            ti_Seek(0 - (histOffset * INPUT_LENGTH), SEEK_END, settingsAppvar);
-                            ti_Read(&input, sizeof(char), INPUT_LENGTH, settingsAppvar);
-                        }
-                        histOffset = (histOffset + 1) * (histOffset <= (ti_GetSize(settingsAppvar) / INPUT_LENGTH));
-                        ti_Close(settingsAppvar);
-                        y = cursorY;
-                        lineWrap = offsetX + ((strlen(input) + 1) * FONT_WIDTH);
-                        while (lineWrap >= (((SCR_WIDTH - 1) * FONT_WIDTH) + SCR_OFFSET_X)) {
-                            if (y >= (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y)) {
-                                cursorY -= FONT_HEIGHT;
-                                fontlib_ScrollWindowDown(); // Manually scroll window
-
-                                // Scroll the contents of the screen buffer
-                                memmove(&scrBuffer[0][0], &scrBuffer[1][0], (BUFFER_SIZE - SCR_WIDTH) * sizeof(char_styled_t));
-                                for (k = 0; k < SCR_WIDTH; k++) {
-                                    scrBuffer[SCR_HEIGHT - 1][k].character = ' ';
-                                    scrBuffer[SCR_HEIGHT - 1][k].bold = false;
-                                    scrBuffer[SCR_HEIGHT - 1][k].italic = false;
-                                    scrBuffer[SCR_HEIGHT - 1][k].underline = false;
-                                    scrBuffer[SCR_HEIGHT - 1][k].fg_col = WHITE;
-                                    scrBuffer[SCR_HEIGHT - 1][k].bg_col = BLACK;
-                                }
-
-                                // Erase the bottom line
-                                gfx_SetColor(BLACK);
-                                gfx_FillRectangle(SCR_OFFSET_X, (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y), SCR_WIDTH_P, FONT_HEIGHT);
-
-                                fontlib_SetCursorPosition(SCR_OFFSET_X, (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y));
+                        if (!disableRecall) {
+                            settingsAppvar = ti_Open("CEshHist", "r");
+                            if (settingsAppvar) {
+                                ti_Seek(0 - (histOffset * INPUT_LENGTH), SEEK_END, settingsAppvar);
+                                ti_Read(&input, sizeof(char), INPUT_LENGTH, settingsAppvar);
                             }
-                            lineWrap -= SCR_WIDTH * FONT_WIDTH;
-                            y += FONT_HEIGHT;
+                            histOffset = (histOffset + 1) * (histOffset <= (ti_GetSize(settingsAppvar) / INPUT_LENGTH));
+                            ti_Close(settingsAppvar);
+                            y = cursorY;
+                            lineWrap = offsetX + ((strlen(input) + 1) * FONT_WIDTH);
+                            while (lineWrap >= (((SCR_WIDTH - 1) * FONT_WIDTH) + SCR_OFFSET_X)) {
+                                if (y >= (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y)) {
+                                    cursorY -= FONT_HEIGHT;
+                                    fontlib_ScrollWindowDown(); // Manually scroll window
+
+                                    // Scroll the contents of the screen buffer
+                                    memmove(&scrBuffer[0][0], &scrBuffer[1][0], (BUFFER_SIZE - SCR_WIDTH) * sizeof(char_styled_t));
+                                    for (k = 0; k < SCR_WIDTH; k++) {
+                                        scrBuffer[SCR_HEIGHT - 1][k].character = ' ';
+                                        scrBuffer[SCR_HEIGHT - 1][k].bold = false;
+                                        scrBuffer[SCR_HEIGHT - 1][k].italic = false;
+                                        scrBuffer[SCR_HEIGHT - 1][k].underline = false;
+                                        scrBuffer[SCR_HEIGHT - 1][k].fg_col = WHITE;
+                                        scrBuffer[SCR_HEIGHT - 1][k].bg_col = BLACK;
+                                    }
+
+                                    // Erase the bottom line
+                                    gfx_SetColor(BLACK);
+                                    gfx_FillRectangle(SCR_OFFSET_X, (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y), SCR_WIDTH_P, FONT_HEIGHT);
+
+                                    fontlib_SetCursorPosition(SCR_OFFSET_X, (((SCR_HEIGHT - 1) * FONT_HEIGHT) + SCR_OFFSET_Y));
+                                }
+                                lineWrap -= SCR_WIDTH * FONT_WIDTH;
+                                y += FONT_HEIGHT;
+                            }
+                            cursorOffset = 0;
                         }
                         break;
                     case 9: // Enter
@@ -866,6 +888,15 @@ void get_user_input(const char *msg, const bool maskInput, const uint16_t offset
                         }
                         lineWrap = offsetX + FONT_WIDTH;
                         histOffset = 1;
+                        cursorOffset = 0;
+                        break;
+                    case 32: // Stat
+                        cursorOffset = 0;
+                        j = -1;
+                        break;
+                    case 40: // X
+                        cursorOffset = strlen(input);
+                        j = -1;
                         break;
                     case 48: // Alpha
                         if (textIndex != 2) {
@@ -891,6 +922,10 @@ void get_user_input(const char *msg, const bool maskInput, const uint16_t offset
                     case 56: // Del
                         print_spaces(offsetX, cursorY, strlen(msg) + strlen(input) + 1);
                         if (strlen(input)) {
+                            if (cursorOffset) {
+                                memmove(&input[strlen(input) - cursorOffset], &input[strlen(input) - cursorOffset + 1], strlen(input) - (strlen(input) - cursorOffset + 1));
+                                cursorOffset--;
+                            }
                             input[strlen(input)-1] = 0;
                             lineWrap = lineWrap - 6;
                         }
@@ -899,11 +934,6 @@ void get_user_input(const char *msg, const bool maskInput, const uint16_t offset
                         break;
                 }
             }
-
-                switch (kb_Data[7]) {
-                    default:
-                        break;
-                }
 
             /* Immediately update screen output when input string changed */
 
@@ -936,6 +966,9 @@ void get_user_input(const char *msg, const bool maskInput, const uint16_t offset
 
             print_spaces(offsetX, cursorY, strlen(msg) + strlen(input) + 1);
             draw_str_update_buf(msg);
+            
+            // Make sure cursor offset does not exceed the size of input
+            if (cursorOffset > strlen(input)) cursorOffset = strlen(input);
 
             // Draw stars if masking input, otherwise output plain text
             if (maskInput) {
@@ -943,7 +976,7 @@ void get_user_input(const char *msg, const bool maskInput, const uint16_t offset
                     if ((i == strlen(input) - cursorOffset + 1) && (j < 500)) {
                         temp[0] = CURSOR_INDEX[textIndex];
                         fontlib_DrawString(temp); // Draw cursor
-                    } else {
+                    } else if (i <= strlen(input)) {
                         draw_str_update_buf("*");
                     }
                 }
