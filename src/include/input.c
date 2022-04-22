@@ -110,6 +110,51 @@ void parse_user_input(void) {
             }
         }
 
+    // Command: logout
+    } else if (!strcmp(input, "logout")) {
+
+        isRetFromPrgm = false;
+        appvarSlot = ti_Open("CEshSett", "r+");
+        ti_Seek(2 * USER_PWD_LENGTH, SEEK_SET, appvarSlot);
+        ti_Write(&isRetFromPrgm, sizeof(bool), 1, appvarSlot);
+        ti_SetArchiveStatus(true, appvarSlot);
+        ti_Close(appvarSlot);
+        main();
+
+    // Command: reboot
+    } else if (!strcmp(input, "reboot")) {
+
+        isRetFromPrgm = false;
+        appvarSlot = ti_Open("CEshSett", "r+");
+        ti_Seek(2 * USER_PWD_LENGTH, SEEK_SET, appvarSlot);
+        ti_Write(&isRetFromPrgm, sizeof(bool), 1, appvarSlot);
+        ti_SetArchiveStatus(true, appvarSlot);
+        ti_Close(appvarSlot);
+        power_down(true, false);
+        main();
+
+    // Command: shutdown
+    } else if (!strcmp(input, "shutdown")) {
+
+        isRetFromPrgm = false;
+        appvarSlot = ti_Open("CEshSett", "r+");
+        ti_Seek(2 * USER_PWD_LENGTH, SEEK_SET, appvarSlot);
+        ti_Write(&isRetFromPrgm, sizeof(bool), 1, appvarSlot);
+        ti_SetArchiveStatus(true, appvarSlot);
+        ti_Close(appvarSlot);
+        if (numargs > 1) {
+            if (!strcmp(&input[arglocs[1]], "-n")) {
+                power_down(false, false);
+                cesh_End();
+            } else if (!strcmp(&input[arglocs[1]], "-r")) {
+                power_down(true, false);
+                main();
+            }
+        } else {
+            power_down(false, false);
+            main();
+        }
+
     // Command: history
     } else if (!strcmp(input, "history")) {
 
@@ -235,6 +280,15 @@ void get_user_input(const char *msg, const bool maskInput, const bool disableRec
         // Update keyboard data
         key = get_single_key_pressed();
 
+        // Handle poweroff
+        if (kb_On) {
+            kb_ClearOnLatch();
+            if (textIndex == 0) {
+                textIndex = 3;
+                power_down(false, true);
+            }
+        }
+
         // Blink Cursor
         if (j == 0) { // Update screen output w/ cursor
 
@@ -242,23 +296,18 @@ void get_user_input(const char *msg, const bool maskInput, const bool disableRec
             draw_str_update_buf(msg);
 
             // Draw stars if masking input, otherwise output plain text
-            if (maskInput) {
-                for (i = 1; i <= strlen(input) + 1; i++) {
-                    if (i == strlen(input) - cursorOffset + 1) {
-                        temp[0] = CURSOR_INDEX[textIndex];
-                        fontlib_DrawString(temp); // Draw cursor
-                    } else if (i <= strlen(input)) {
+            for (i = 0; i <= strlen(input); i++) {
+                if (i == (strlen(input) - cursorOffset)) {
+                    temp[0] = CURSOR_INDEX[textIndex];
+                    fontlib_DrawString(temp); // Draw cursor
+                } else if (i <= strlen(input)) {
+                    if (maskInput) {
                         draw_str_update_buf("*");
+                    } else {
+                        temp[0] = input[i];
+                        fontlib_DrawString(temp);
                     }
                 }
-            } else {
-                i = strlen(input) - cursorOffset;
-                temp[0] = input[i];
-                input[i] = CURSOR_INDEX[textIndex];
-                if (!cursorOffset)
-                    input[i + 1] = 0;
-                draw_str_update_buf(input);
-                input[i] = temp[0];
             }
 
             gfx_BlitBuffer();
@@ -435,9 +484,8 @@ void get_user_input(const char *msg, const bool maskInput, const bool disableRec
                         }
                         break;
                     case 55: // Mode
-                        if (textIndex < 2) {
+                        if (textIndex < 2)
                             cesh_End();
-                        }
                         break;
                     case 56: // Del
                         print_spaces(offsetX, cursorY, strlen(msg) + strlen(input) + 1);
@@ -491,23 +539,18 @@ void get_user_input(const char *msg, const bool maskInput, const bool disableRec
             if (cursorOffset > strlen(input)) cursorOffset = strlen(input);
 
             // Draw stars if masking input, otherwise output plain text
-            if (maskInput) {
-                for (i = 1; i <= strlen(input) + 1; i++) {
-                    if ((i == strlen(input) - cursorOffset + 1) && (j < 500)) {
-                        temp[0] = CURSOR_INDEX[textIndex];
-                        fontlib_DrawString(temp); // Draw cursor
-                    } else if (i <= strlen(input)) {
+            for (i = 0; i <= strlen(input); i++) {
+                if (i == (strlen(input) - cursorOffset)) {
+                    temp[0] = CURSOR_INDEX[textIndex];
+                    fontlib_DrawString(temp); // Draw cursor
+                } else if (i <= strlen(input)) {
+                    if (maskInput) {
                         draw_str_update_buf("*");
+                    } else {
+                        temp[0] = input[i];
+                        fontlib_DrawString(temp);
                     }
                 }
-            } else {
-                i = strlen(input) - cursorOffset;
-                temp[0] = input[i];
-                if (j < 500) input[i] = CURSOR_INDEX[textIndex];
-                if (!cursorOffset)
-                    input[i + 1] = 0;
-                draw_str_update_buf(input);
-                input[i] = temp[0];
             }
 
             gfx_BlitBuffer();

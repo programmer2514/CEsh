@@ -11,6 +11,7 @@
 #include <graphx.h>
 #include <fontlibc.h>
 #include <fileioc.h>
+#include <keypadc.h>
 
 #include "routines.h"
 
@@ -84,4 +85,55 @@ int run_prgm(char *prgm, char *args) {
     cesh_Init();
 
     return ret;
+}
+
+void power_down(bool restart, bool save) {
+
+    uint16_t cursorPos[2] = {SCR_OFFSET_X, SCR_OFFSET_Y};
+    uint8_t textColors[2] = {WHITE, BLACK};
+    bool sdUnderlineText = false,
+         sdItalicText = false,
+         sdBoldText = false;
+
+    if (save) {
+        // Set save state variables
+        isRetFromPrgm = true;
+        cursorPos[0] = fontlib_GetCursorX();
+        cursorPos[1] = fontlib_GetCursorY();
+        textColors[0] = fontlib_GetForegroundColor();
+        textColors[1] = fontlib_GetBackgroundColor();
+        sdUnderlineText = underlineText;
+        sdItalicText = italicText;
+        sdBoldText = boldText;
+
+        // Save shell state
+        appvarSlot = ti_Open("CEshSett", "r+");
+
+        ti_Seek(sizeof(char) * (2 * USER_PWD_LENGTH), SEEK_SET, appvarSlot);
+        ti_Write(&isRetFromPrgm, sizeof(bool), 1, appvarSlot);
+        ti_Write(&cursorPos, sizeof(uint16_t), 2, appvarSlot);
+        ti_Write(&textColors, sizeof(uint8_t), 2, appvarSlot);
+        ti_Seek(sizeof(uint16_t) * 7, SEEK_SET, appvarSlot);
+        ti_Write(&sdUnderlineText, sizeof(bool), 1, appvarSlot);
+        ti_Write(&sdItalicText, sizeof(bool), 1, appvarSlot);
+        ti_Write(&sdBoldText, sizeof(bool), 1, appvarSlot);
+
+        ti_SetArchiveStatus(true, appvarSlot);
+        ti_Close(appvarSlot);
+
+        // Save screen state
+        appvarSlot = ti_Open("CEshSBuf", "w+");
+        ti_Write(&scrBuffer, sizeof(char_styled_t), BUFFER_SIZE, appvarSlot);
+        ti_Close(appvarSlot);
+    }
+
+    gfx_End();
+
+    boot_TurnOff();
+    while ((!kb_On) && (!restart)); // Wait for user to press On
+    boot_TurnOn();
+
+    kb_ClearOnLatch();
+
+    cesh_Init();
 }
