@@ -110,6 +110,14 @@ void parse_user_input(void) {
             }
         }
 
+    // Command: clear
+    } else if (!strcmp(input, "clear")) {
+
+        startOnNewLine = false;
+
+        // Print ANSI code for clear screen ("ESC[2J") and move cursor to home position ("ESC[H")
+        parse_draw_string("\\e[2J\\e[H");
+
     // Command: logout
     } else if (!strcmp(input, "logout")) {
 

@@ -161,20 +161,22 @@ void parse_draw_string(const char *string) {
                 // Directly set cursor position
                 if ((parserData[j] == 'f') || (parserData[j] == 'H')) {
 
-                    // Move cursor to top-left (0,0)
-                    if (parserData[j - 1] == '[') {
-                        x = y = 0;
-                    }
-
                     // Store index of ';' in m
                     for (m = i + 3; m < j; m++) {
                         if (parserData[m] == ';')
                             break;
                     }
 
+                    // Move cursor to top-left (0,0)
+                    if (parserData[j - 1] == '[') {
+                        x = 0;
+                        y = 0;
+
                     // Retrieve & set cursor position
-                    x = str_to_num(&parserData[m + 1], j - (m + 1), 10);
-                    y = str_to_num(&parserData[i + 3], m - (i + 3), 10);
+                    } else {
+                        x = str_to_num(&parserData[m + 1], j - (m + 1), 10);
+                        y = str_to_num(&parserData[i + 3], m - (i + 3), 10);
+                    }
 
                     fontlib_SetCursorPosition((x * FONT_WIDTH) + SCR_OFFSET_X, (y * FONT_HEIGHT) + SCR_OFFSET_Y);
                 }

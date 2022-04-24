@@ -85,7 +85,7 @@ void cesh_Init(void) {
     }
 
     ti_SetGCBehavior(cesh_PreGC, cesh_Init);
-    
+
     kb_EnableOnLatch();
 
     gfx_Begin();
