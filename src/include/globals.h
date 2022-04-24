@@ -24,6 +24,7 @@ extern bool italicText;
 extern bool boldText;
 
 extern bool isRetFromPrgm;
+extern bool noSplash;
 extern bool settingsAppvarExists;
 extern bool shouldScroll;
 

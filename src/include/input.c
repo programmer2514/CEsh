@@ -127,6 +127,7 @@ void parse_user_input(void) {
         ti_Write(&isRetFromPrgm, sizeof(bool), 1, appvarSlot);
         ti_SetArchiveStatus(true, appvarSlot);
         ti_Close(appvarSlot);
+        noSplash = true;
         main();
 
     // Command: reboot

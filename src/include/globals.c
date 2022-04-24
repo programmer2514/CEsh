@@ -35,6 +35,7 @@ bool italicText = false;
 bool boldText = false;
 
 bool isRetFromPrgm = false;
+bool noSplash = false;
 bool settingsAppvarExists = true;
 bool shouldScroll;
 

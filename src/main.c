@@ -187,8 +187,6 @@ void cesh_Setup(void) {
     uint8_t i;
     char pwd_tmp[USER_PWD_LENGTH];
 
-    cesh_Splash();
-
     // Get new username
     draw_newline();
     draw_str_update_buf("Please create a default CEsh user account.");
@@ -246,21 +244,18 @@ void cesh_Splash(void) {
     srandom(sec + (min * 60) + (hr * 360));
 
     gfx_FillScreen(BLACK);
-    gfx_Sprite(imgSplash, (LCD_WIDTH - imgSplash_width) / 2, (LCD_HEIGHT - imgSplash_height) * 7 / 24);
-    fontlib_SetCursorPosition((LCD_WIDTH - 29*FONT_WIDTH) / 2, (LCD_HEIGHT - FONT_HEIGHT) * 2 / 3);
-    fontlib_DrawString("Initializing first-time setup");
-    for (i = 0; i < (random() % 18) + 6; i++) {
+    gfx_Sprite(imgSplash, (LCD_WIDTH - imgSplash_width) / 2, (LCD_HEIGHT - imgSplash_height) * 5 / 12);
+    for (i = 0; i < (random() % 15) + 3; i++) {
         gfx_SetColor(inRange((i % 6),1,3) ? WHITE : BLACK);
-        gfx_FillCircle((LCD_WIDTH / 2) - 18, LCD_HEIGHT * 3 / 4, 3);
+        gfx_FillCircle((LCD_WIDTH / 2) - 18, LCD_HEIGHT * 2 / 3, 3);
         gfx_SetColor(inRange((i % 6),2,4) ? WHITE : BLACK);
-        gfx_FillCircle(LCD_WIDTH / 2, LCD_HEIGHT * 3 / 4, 3);
+        gfx_FillCircle(LCD_WIDTH / 2, LCD_HEIGHT * 2 / 3, 3);
         gfx_SetColor(inRange((i % 6),3,5) ? WHITE : BLACK);
-        gfx_FillCircle((LCD_WIDTH / 2) + 18, LCD_HEIGHT * 3 / 4, 3);
+        gfx_FillCircle((LCD_WIDTH / 2) + 18, LCD_HEIGHT * 2 / 3, 3);
         gfx_BlitBuffer();
-        delay(800);
+        delay(400);
     }
     gfx_FillScreen(BLACK);
-    fontlib_SetCursorPosition(SCR_OFFSET_X, SCR_OFFSET_Y);
 }
 
 // Main shell loop
@@ -273,6 +268,13 @@ void cesh_Shell(void) {
          lastLoginHappened = false;
 
     if (!isRetFromPrgm) {
+
+        if (noSplash) {
+            noSplash = false;
+        } else {
+            cesh_Splash();
+        }
+        
         // Startup text
         draw_str_update_buf("CEsh v0.1a - The TI-84 Plus CE terminal");
         draw_newline();
