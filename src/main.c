@@ -18,7 +18,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "lib/cesh.h"
+#include "cesh/cesh.h"
 
 
 int main(void)

@@ -18,8 +18,7 @@
 #include "types.h"
 #include "draw.h"
 #include "routines.h"
-
-#include "../cesh.h"
+#include "shell.h"
 
 #include "input.h"
 
@@ -136,7 +135,7 @@ void parse_user_input(void) {
         ti_SetArchiveStatus(true, appvarSlot);
         ti_Close(appvarSlot);
         noSplash = true;
-        cesh_Main();
+        sh_main();
 
     // Command: reboot
     } else if (!strcmp(input, "reboot")) {
@@ -148,7 +147,7 @@ void parse_user_input(void) {
         ti_SetArchiveStatus(true, appvarSlot);
         ti_Close(appvarSlot);
         power_down(true, false);
-        cesh_Main();
+        sh_main();
 
     // Command: shutdown
     } else if (!strcmp(input, "shutdown")) {
@@ -162,14 +161,14 @@ void parse_user_input(void) {
         if (numargs > 1) {
             if (!strcmp(&input[arglocs[1]], "-n")) {
                 power_down(false, false);
-                cesh_End();
+                sh_end();
             } else if (!strcmp(&input[arglocs[1]], "-r")) {
                 power_down(true, false);
-                cesh_Main();
+                sh_main();
             }
         } else {
             power_down(false, false);
-            cesh_Main();
+            sh_main();
         }
 
     // Command: history
@@ -502,7 +501,7 @@ void get_user_input(const char *msg, const bool maskInput, const bool disableRec
                         break;
                     case 55: // Mode
                         if (textIndex < 2)
-                            cesh_End();
+                            sh_end();
                         break;
                     case 56: // Del
                         print_spaces(offsetX, cursorY, strlen(msg) + strlen(input) + 1);

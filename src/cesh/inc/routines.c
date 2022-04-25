@@ -17,8 +17,7 @@
 #include "macros.h"
 #include "types.h"
 #include "input.h"
-
-#include "../cesh.h"
+#include "shell.h"
 
 #include "routines.h"
 
@@ -88,8 +87,8 @@ int run_prgm(char *prgm, char *args) {
 
     gfx_End();
 
-    ret = os_RunPrgm(prgm, NULL, 0, (os_runprgm_callback_t)cesh_Main);
-    cesh_Init();
+    ret = os_RunPrgm(prgm, NULL, 0, (os_runprgm_callback_t)sh_main);
+    sh_init();
 
     return ret;
 }
@@ -142,5 +141,5 @@ void power_down(bool restart, bool save) {
 
     kb_ClearOnLatch();
 
-    cesh_Init();
+    sh_init();
 }

@@ -13,26 +13,26 @@
 #include <fileioc.h>
 #include <keypadc.h>
 
-#include "gfx/gfx.h"
-#include "fonts/fonts.h"
+#include "../../gfx/gfx.h"
+#include "../../fonts/fonts.h"
 
-#include "inc/globals.h"
-#include "inc/macros.h"
-#include "inc/types.h"
-#include "inc/input.h"
-#include "inc/draw.h"
-#include "inc/routines.h"
+#include "globals.h"
+#include "macros.h"
+#include "types.h"
+#include "input.h"
+#include "draw.h"
+#include "routines.h"
 
-#include "cesh.h"
+#include "shell.h"
 
 
-void cesh_Main(void) {
-    cesh_Init();
-    cesh_Shell();
-    cesh_End();
+void sh_main(void) {
+    sh_init();
+    sh_shell();
+    sh_end();
 }
 
-void cesh_Init(void) {
+void sh_init(void) {
 
     uint8_t i, j;
     uint16_t cursorPos[2] = {SCR_OFFSET_X, SCR_OFFSET_Y};
@@ -59,7 +59,7 @@ void cesh_Init(void) {
         }
     }
 
-    ti_SetGCBehavior(cesh_PreGC, cesh_Init);
+    ti_SetGCBehavior(sh_pregc, sh_init);
 
     kb_EnableOnLatch();
 
@@ -156,7 +156,7 @@ void cesh_Init(void) {
     strcpy(path, "/");
 }
 
-void cesh_Setup(void) {
+void sh_setup(void) {
 
     uint8_t i;
     char pwd_tmp[USER_PWD_LENGTH];
@@ -209,7 +209,7 @@ void cesh_Setup(void) {
     draw_newline();
 }
 
-void cesh_Splash(void) {
+void sh_splash(void) {
 
     uint8_t i, sec, min, hr;
 
@@ -231,7 +231,7 @@ void cesh_Splash(void) {
     gfx_FillScreen(BLACK);
 }
 
-void cesh_Shell(void) {
+void sh_shell(void) {
 
     uint8_t temp, i, day, mon, sec, min, hr;
     uint16_t yr,
@@ -244,7 +244,7 @@ void cesh_Shell(void) {
         if (noSplash) {
             noSplash = false;
         } else {
-            cesh_Splash();
+            sh_splash();
         }
         
         // Startup text
@@ -258,7 +258,7 @@ void cesh_Shell(void) {
         draw_newline();
 
         if (!settingsAppvarExists) {
-            cesh_Setup();
+            sh_setup();
             fts = true;
         }
 
@@ -381,7 +381,7 @@ void cesh_Shell(void) {
     } while (strcmp(input, "exit")); // Keep going until user types exit
 }
 
-void cesh_PreGC(void) {
+void sh_pregc(void) {
 
     // Save screen state
     appvarSlot = ti_Open("CEshSBuf", "w+");
@@ -391,7 +391,7 @@ void cesh_PreGC(void) {
     gfx_End();
 }
 
-void cesh_End(void) {
+void sh_end(void) {
     gfx_End();
 
     // Mark shell as exited
