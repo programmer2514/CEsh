@@ -18,7 +18,6 @@
 #include "types.h"
 #include "draw.h"
 #include "routines.h"
-#include "main.h"
 
 #include "../cesh.h"
 
@@ -137,7 +136,7 @@ void parse_user_input(void) {
         ti_SetArchiveStatus(true, appvarSlot);
         ti_Close(appvarSlot);
         noSplash = true;
-        main();
+        cesh_Main();
 
     // Command: reboot
     } else if (!strcmp(input, "reboot")) {
@@ -149,7 +148,7 @@ void parse_user_input(void) {
         ti_SetArchiveStatus(true, appvarSlot);
         ti_Close(appvarSlot);
         power_down(true, false);
-        main();
+        cesh_Main();
 
     // Command: shutdown
     } else if (!strcmp(input, "shutdown")) {
@@ -166,11 +165,11 @@ void parse_user_input(void) {
                 cesh_End();
             } else if (!strcmp(&input[arglocs[1]], "-r")) {
                 power_down(true, false);
-                main();
+                cesh_Main();
             }
         } else {
             power_down(false, false);
-            main();
+            cesh_Main();
         }
 
     // Command: history

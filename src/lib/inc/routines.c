@@ -16,7 +16,6 @@
 #include "globals.h"
 #include "macros.h"
 #include "types.h"
-#include "main.h"
 #include "input.h"
 
 #include "../cesh.h"
@@ -89,7 +88,7 @@ int run_prgm(char *prgm, char *args) {
 
     gfx_End();
 
-    ret = os_RunPrgm(prgm, NULL, 0, (os_runprgm_callback_t)main);
+    ret = os_RunPrgm(prgm, NULL, 0, (os_runprgm_callback_t)cesh_Main);
     cesh_Init();
 
     return ret;

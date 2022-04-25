@@ -23,8 +23,6 @@
 
 int main(void)
 {
-    cesh_Init();
-    cesh_Shell();
-    cesh_End();
+    cesh_Main();
     return 0;
 }

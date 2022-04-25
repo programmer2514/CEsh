@@ -5,6 +5,7 @@
 extern "C" {
 #endif
 
+void cesh_Main(void);
 void cesh_Init(void);
 void cesh_Setup(void);
 void cesh_Splash(void);

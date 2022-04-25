@@ -26,6 +26,12 @@
 #include "cesh.h"
 
 
+void cesh_Main(void) {
+    cesh_Init();
+    cesh_Shell();
+    cesh_End();
+}
+
 void cesh_Init(void) {
 
     uint8_t i, j;
