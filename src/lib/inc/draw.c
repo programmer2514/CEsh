@@ -13,6 +13,13 @@
 #include <fileioc.h>
 #include <keypadc.h>
 
+#include "fonts/fonts.h"
+
+#include "globals.h"
+#include "macros.h"
+#include "types.h"
+#include "routines.h"
+
 #include "draw.h"
 
 void parse_draw_string(const char *string) {

@@ -13,6 +13,15 @@
 #include <fileioc.h>
 #include <keypadc.h>
 
+#include "globals.h"
+#include "macros.h"
+#include "types.h"
+#include "draw.h"
+#include "routines.h"
+#include "main.h"
+
+#include "../cesh.h"
+
 #include "input.h"
 
 void parse_user_input(void) {

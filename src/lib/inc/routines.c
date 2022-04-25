@@ -13,6 +13,14 @@
 #include <fileioc.h>
 #include <keypadc.h>
 
+#include "globals.h"
+#include "macros.h"
+#include "types.h"
+#include "main.h"
+#include "input.h"
+
+#include "../cesh.h"
+
 #include "routines.h"
 
 uint16_t str_to_num(const char *string, const uint8_t length, const uint8_t base) {

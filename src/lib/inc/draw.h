@@ -1,13 +1,6 @@
 #ifndef CESH_DRAW
 #define CESH_DRAW
 
-#include "globals.h"
-#include "macros.h"
-#include "types.h"
-#include "routines.h"
-
-#include "fonts/fonts.h"
-
 void parse_draw_string(const char *string);
 void draw_str_update_buf(const char *string);
 void draw_int_update_buf(int number, const uint8_t length);

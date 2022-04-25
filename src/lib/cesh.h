@@ -1,5 +1,9 @@
-#ifndef CESH_MAIN
-#define CESH_MAIN
+#ifndef CESH_H
+#define CESH_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 void cesh_Init(void);
 void cesh_Setup(void);
@@ -8,6 +12,8 @@ void cesh_Shell(void);
 void cesh_PreGC(void);
 void cesh_End(void);
 
-int main(void);
+#ifdef __cplusplus
+}
+#endif
 
 #endif
