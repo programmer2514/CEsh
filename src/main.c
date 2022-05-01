@@ -4,7 +4,6 @@
 // License: GPL v3                                            //
 // Description: A (ba)sh-inspired shell for the TI-84 Plus CE //
 ////////////////////////////////////////////////////////////////
-#include <debug.h>
 
 /* Keep these headers */
 #include <stdbool.h>

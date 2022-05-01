@@ -13,6 +13,8 @@
 #include <fileioc.h>
 #include <keypadc.h>
 
+#include <intce.h>
+
 #include "globals.h"
 #include "macros.h"
 #include "types.h"
@@ -95,6 +97,7 @@ int run_prgm(char *prgm, char *args) {
 
 void power_down(bool restart, bool save) {
 
+    uint24_t enableConfigBak;
     uint16_t cursorPos[2] = {SCR_OFFSET_X, SCR_OFFSET_Y};
     uint8_t textColors[2] = {WHITE, BLACK};
     bool sdUnderlineText = false,
@@ -134,12 +137,23 @@ void power_down(bool restart, bool save) {
     }
 
     gfx_End();
-
     boot_TurnOff();
-    while ((!kb_On) && (!restart)); // Wait for user to press On
+
+    if (!restart) {
+        // Save and set up interrupts
+        int_Enable();
+        kb_ClearOnLatch();
+        enableConfigBak = int_EnableConfig;
+        int_EnableConfig = INT_ON;
+
+        int_Wait(); // Wait for user to press On
+
+        // Restore and disable interrupts
+        int_Disable();
+        kb_ClearOnLatch();
+        int_EnableConfig = enableConfigBak;
+    }
+
     boot_TurnOn();
-
-    kb_ClearOnLatch();
-
     sh_init();
 }
