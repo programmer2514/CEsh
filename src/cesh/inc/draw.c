@@ -501,6 +501,12 @@ void print_spaces(uint16_t x, uint16_t y, uint16_t num) {
         fontlib_SetCursorPosition(SCR_OFFSET_X, y);
     }
     for (i = 0; i < num; i++) {
+        scrBuffer[(fontlib_GetCursorY() - SCR_OFFSET_Y) / FONT_HEIGHT][(fontlib_GetCursorX() - SCR_OFFSET_X) / FONT_WIDTH].character = ' ';
+        scrBuffer[(fontlib_GetCursorY() - SCR_OFFSET_Y) / FONT_HEIGHT][(fontlib_GetCursorX() - SCR_OFFSET_X) / FONT_WIDTH].bold = false;
+        scrBuffer[(fontlib_GetCursorY() - SCR_OFFSET_Y) / FONT_HEIGHT][(fontlib_GetCursorX() - SCR_OFFSET_X) / FONT_WIDTH].italic = false;
+        scrBuffer[(fontlib_GetCursorY() - SCR_OFFSET_Y) / FONT_HEIGHT][(fontlib_GetCursorX() - SCR_OFFSET_X) / FONT_WIDTH].underline = false;
+        scrBuffer[(fontlib_GetCursorY() - SCR_OFFSET_Y) / FONT_HEIGHT][(fontlib_GetCursorX() - SCR_OFFSET_X) / FONT_WIDTH].fg_col = WHITE;
+        scrBuffer[(fontlib_GetCursorY() - SCR_OFFSET_Y) / FONT_HEIGHT][(fontlib_GetCursorX() - SCR_OFFSET_X) / FONT_WIDTH].bg_col = BLACK;
         fontlib_DrawString(" ");
     }
     if (x) {

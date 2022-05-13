@@ -1,6 +1,7 @@
 #ifndef CESH_TYPES
 #define CESH_TYPES
 
+// Used to retain styles for screen buffer
 typedef struct __char_styled__ {
     char character : 8;
     bool bold      : 1;

@@ -264,7 +264,8 @@ void parse_user_input(void) {
         draw_str_update_buf(": command not found");
 
     }
-
+    
+    free(arglocs);
     gfx_BlitBuffer();
 }
 

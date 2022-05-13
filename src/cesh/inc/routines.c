@@ -146,7 +146,11 @@ void power_down(bool restart, bool save) {
         enableConfigBak = int_EnableConfig;
         int_EnableConfig = INT_ON;
 
+        boot_Set6MHzModeI(); // Enter low-power mode
+
         int_Wait(); // Wait for user to press On
+
+        boot_Set48MHzModeI(); // Leave low-power mode
 
         // Restore and disable interrupts
         int_Disable();
