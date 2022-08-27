@@ -1,0 +1,157 @@
+Appvar: CEshMFTd
+
+----------
+
+Header:
+
+  A mft_header_t counting the number of entries
+
+  Example:
+    - 2
+
+  Size: sizeof(mft_header_t) bytes
+
+----------
+
+Entry:
+
+  Path (variable length) | Filename (8 bytes)
+
+  In no particular order
+
+  Unused filename bytes will be null
+  Null terminators after each entry component
+
+  If entry exists, but filename is NULL, folder is empty
+    - Therefore, if file moved to/created in empty folder,
+      simply update filename entry of respective folder
+
+  Iterating through entries:
+    i = sizeof(mft_header_t);
+    while (mft[i] != FS_MFT_END) {
+        path = mft[i];
+        filename = mft[i + strlen(path) + 1];
+        i += strlen(path) + FS_FNAME_LEN;
+    }
+
+  Example:
+    - /    Ø    CESHØØØØ Ø    /prog Ø    BEJEWLED Ø
+    - Path NULL Filename NULL Path  NULL Filename NULL
+
+  Squished (char):
+    - /ØCESHØØØØØ/progØBEJEWLEDØ
+    - Size: 26 bytes
+
+----------
+
+Footer:
+
+  1 byte, 0x1A
+    - When iterating through entries, indicates EOF
+
+___________________________________________________________________________________________________
+
+
+Appvar: CEshMFTi
+
+----------
+
+Header:
+
+  A mft_header_t counting the number of entries
+
+  Should be same as CEshMFTd's equivalent header
+    - Can be used to know when to regenerate index
+
+  Example:
+    - 2
+
+  Size: sizeof(mft_header_t) bytes
+
+----------
+
+Entry 1:
+
+  An mft_index_t array with 28 entries
+
+  Each entry corresponds to a letter, where entry 0 is a . or no
+  character (the root directory) and entry 27 is any other
+  non-letter character (_, #, etc.)
+
+  Each entry will be the offset in entry 3 (pathnames index) where
+  each respective letter occurs, or 65535 if it doesn't
+
+  Note: This is sorted by the name of the LAST folder in the path, so
+  /usr/bin/ would be placed under 'B'/'b', not 'U'/'u'
+
+  Example:
+    - [0, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535,
+       65535, 65535, 65535, 65535, 65535, 1, 65535, 65535, 65535, 65535, 65535,
+       65535, 65535, 65535, 65535, 65535, 65535]
+    - This indicates that Entry_3[0] is the first occurrence of a '.'/''
+      in a filename, and Entry_3[1] is the first occurrence of 'P'/'p'
+
+  Size: 28*sizeof(mft_index_t) bytes
+
+----------
+
+Entry 2:
+
+  An mft_index_t array with 28 entries
+
+  Each entry corresponds to a letter, where entry 0 is a . and
+  entry 27 is any other non-letter character (_, #, etc.)
+
+  Each entry will be the offset in entry 4 (filenames index) where
+  each respective letter occurs, or 65535 if it doesn't
+
+  Example:
+    - [65535, 65535, 0    , 1    , 65535, 65535, 65535, 65535, 65535, 65535, 65535,
+       65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535,
+       65535, 65535, 65535, 65535, 65535, 65535]
+    - This indicates that Entry_4[0] is the first occurrence of 'B'/'b' in a filename,
+      and Entry_4[1] is the first occurrence of 'C'/'c'
+
+  Size: 28*sizeof(mft_index_t) bytes
+
+----------
+
+Entry 3:
+
+  An mft_index_t array with <header value> entries
+
+  An alphabetic index by filepath of every entry in CEshMFTd, where
+  each entry is the offset of the corresponding entry in CEshMFTd
+
+  Example:
+    - [0, 11]
+    - This indicates that CEshMFTd[0 + sizeof(mft_header_t)] is the first
+      path, alphabetically, and CEshMFTd[11 + sizeof(mft_header_t)] is the second
+
+  Size: <header value>*sizeof(mft_index_t) bytes
+
+----------
+
+Entry 4:
+
+  An mft_index_t array with <header value> entries
+
+  An alphabetic index by filename of every entry in CEshMFTd, where
+  each entry is the offset of the corresponding entry in CEshMFTd
+
+  Example:
+    - [11, 0]
+    - This indicates that CEshMFTd[11 + sizeof(mft_header_t)] is the first
+      file, alphabetically, and CEshMFTd[0 + sizeof(mft_header_t)] is the second
+
+  Note: For entries 3 & 4, . comes before A, and any other special
+  character comes after Z, as in entries 1 & 2
+
+  Size: <header value>*sizeof(mft_index_t) bytes
+
+----------
+
+Footer:
+
+  1 byte, 0x1A (FS_MFT_END)
+    - When iterating through entries, indicates EOF
