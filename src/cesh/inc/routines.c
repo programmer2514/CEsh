@@ -1,12 +1,5 @@
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <tice.h>
-
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <sys/power.h>
+#include <ti/vars.h>
 
 #include <graphx.h>
 #include <fontlibc.h>
@@ -51,7 +44,7 @@ int run_prgm(char *prgm, char *args) {
          sdBoldText = false;
 
     // Make sure program actually exists
-    appvarSlot = ti_OpenVar(prgm, "r", TI_PRGM_TYPE);
+    appvarSlot = ti_OpenVar(prgm, "r", OS_TYPE_PRGM);
     if (appvarSlot == 0) {
         return -1;
     }
