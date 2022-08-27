@@ -1,104 +1,138 @@
 #ifndef CESH_FILES
 #define CESH_FILES
 
-/* Examples:
- * path     - "/usr/bin"
- * filepath - "/usr/bin/CESH"
- * filename - "CESH"
+/* Keyword examples:
+ * path  - "/usr/bin"
+ * fpath - "/usr/bin/CESH"
+ * fname - "CESH"
+ * dname - "/bin"
+ *
+ * Keep in mind, ALL fname entries are VAT refs.
+ * Hence, any 2 files with the same name are THE SAME FILE in memory.
+ * This is why a cp_dir method is not provided, and why the cp_file
+ * method does not support maintaining the same filename.
  */
 
-void index_filesystem(void); // Updates MFT records
-bool has_filesystem_changed(void); // Returns true if MFT is not up to date
+// Length of filename, includes NULL padding
+#define FS_NAME_LEN 10
+
+// EOF byte for MFT data/index
+#define FS_MFT_END 0x1A
+
+
+// Typedefs
+typedef uint16_t mft_header_t;
+typedef uint16_t mft_index_t;
+typedef char fs_dat_t;
+
+
+// Rebuilds MFTi records
+void index_fs(void);
+
+
+// Returns true if MFT is not up to date
+bool has_fs_changed(void);
 
 
 /* Lists a directory's contents (ALWAYS FREE RETURN VALUE AFTER USE)
+ *
  * Return codes:
- * <array of contents> - Success
- * 1 - Source directory does not exist
- * 2 - Target parent directory does not exist
- * 3 - Target directory already exists
- * 255 - Not enough memory
+ * <array of fnames and/or dnames> - success
+ * 0 - path is empty
+ * 1 - path does not exist
+ * 255 - not enough memory
  */
-char *list_directory_contents(const char *path);
+fs_dat_t *list_dir_contents(const fs_dat_t *path);
 
 
 /* Creates an empty directory
+ *
  * Return codes:
- * 0 - Success
- * 1 - Target directory already exists
- * 2 - Parent directory does not exist
- * 255 - Not enough memory
+ * 0 - success
+ * 2 - path already exists
+ * 3 - parent of path does not exist
+ * 4 - invalid directory name
+ * 255 - not enough memory
  */
-uint8_t create_directory(const char *path);
+uint8_t mk_dir(const fs_dat_t *path);
 
 
 /* Removes an empty directory
+ *
  * Return codes:
- * 0 - Success
- * 1 - Target directory is not empty
- * 2 - Target directory does not exist
+ * 0 - success
+ * 1 - path does not exist
+ * 5 - path is not empty
  */
-uint8_t remove_directory(const char *path);
+uint8_t rm_dir(const fs_dat_t *path);
 
 
-/* Moves directory to new location
+/* Moves all contents to new directory; deletes original directory
+ * If path is empty, equivalent to rm_dir(path) & mk_dir(new_path)
+ *
  * Return codes:
- * 0 - Success
- * 1 - Source directory does not exist
- * 2 - Target directory already exists
- * 3 - Target parent directory does not exist
+ * 0 - success
+ * 1 - path does not exist
+ * 2 - new_path already exists
+ * 3 - parent of new_path does not exist
+ * 4 - invalid directory name
+ * 255 - not enough memory
  */
-uint8_t move_directory(const char *path, uint8_t type, const char *new_path);
-
-
-/* Copies a directory
- * Return codes:
- * 0 - Success
- * 1 - Source directory does not exist
- * 2 - Target parent directory does not exist
- * 3 - Target directory already exists
- * 255 - Not enough memory
- */
-uint8_t copy_directory(const char *fpath, uint8_t type, const char *new_fpath);
+uint8_t mv_dir(const fs_dat_t *path, const fs_dat_t *new_path);
 
 
 /* Creates an empty file at the specified path
  * Return codes:
- * 0 - Success
- * 1 - File already exists
- * 2 - Target directory does not exist
+ * 0 - success
+ * 2 - fpath already exists
+ * 3 - parent of fpath does not exist
+ * 4 - invalid filename
  * 255 - Not enough memory
  */
-uint8_t create_file(const char *fname, const char *path);
+uint8_t mk_file(const fs_dat_t *fpath);
 
 
 /* Removes an empty directory
  * Return codes:
- * 0 - Success
- * 1 - File does not exist
+ * 0 - success
+ * 1 - fpath does not exist
  */
-uint8_t remove_file(const char *fpath);
+uint8_t rm_file(const fs_dat_t *fpath);
 
 
-/* Moves file to directory
+/* Moves file to new file location
  * Return codes:
- * 0 - Success
- * 1 - File does not exist
- * 2 - Directory does not exist
- * 3 - Target file already exists
+ * 0 - success
+ * 1 - fpath does not exist
+ * 2 - new_fpath already exists
+ * 3 - parent of new_fpath does not exist
+ * 4 - invalid filename
+ * 255 - not enough memory
  */
-uint8_t move_file(const char *fpath, uint8_t type, const char *new_path);
+uint8_t mv_file(const fs_dat_t *fpath, const fs_dat_t *new_fpath);
 
 
-/* Copies a file
+/* Copies a file to new file location
  * Return codes:
- * 0 - Success
- * 1 - File does not exist
- * 2 - Target directory does not exist
- * 3 - Target file already exists
- * 255 - Not enough memory
+ * 0 - success
+ * 1 - fpath does not exist
+ * 2 - new_fpath already exists
+ * 3 - parent of new_fpath does not exist
+ * 4 - invalid filename
+ * 255 - not enough memory
  */
-uint8_t copy_file(const char *fpath, uint8_t type, const char *new_fpath);
+uint8_t cp_file(const fs_dat_t *fpath, const fs_dat_t *new_fpath);
+
+
+/* Hardlinks a file to a second location within a directory
+ * Return codes:
+ * 0 - success
+ * 1 - fpath does not exist
+ * 2 - hardlink already exists within lnk_path
+ * 3 - lnk_path does not exist
+ * 255 - not enough memory
+ */
+uint8_t hl_file(const fs_dat_t *fpath, const fs_dat_t *lnk_path);
 
 
 #endif

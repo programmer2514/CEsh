@@ -5,46 +5,46 @@
 
 #include "files.h"
 
-void index_filesystem(void) {
+void index_fs(void) {
     
 }
 
-bool has_filesystem_changed(void) {
+bool has_fs_changed(void) {
     
 }
 
-char *list_directory_contents(const char *path) {
+fs_dat_t *list_dir_contents(const fs_dat_t *path) {
     
 }
 
-uint8_t create_directory(const char *path) {
+uint8_t mk_dir(const fs_dat_t *path) {
     
 }
 
-uint8_t remove_directory(const char *path) {
+uint8_t rm_dir(const fs_dat_t *path) {
     
 }
 
-uint8_t move_directory(const char *path, uint8_t type, const char *new_path) {
+uint8_t mv_dir(const fs_dat_t *path, const fs_dat_t *new_path) {
     
 }
 
-uint8_t copy_directory(const char *fpath, uint8_t type, const char *new_fpath) {
+uint8_t mk_file(const fs_dat_t *fpath) {
     
 }
 
-uint8_t create_file(const char *fname, const char *path) {
+uint8_t rm_file(const fs_dat_t *fpath) {
     
 }
 
-uint8_t remove_file(const char *fpath) {
+uint8_t mv_file(const fs_dat_t *fpath, const fs_dat_t *new_fpath) {
     
 }
 
-uint8_t move_file(const char *fpath, uint8_t type, const char *new_path) {
+uint8_t cp_file(const fs_dat_t *fpath, const fs_dat_t *new_fpath) {
     
 }
 
-uint8_t copy_file(const char *fpath, uint8_t type, const char *new_fpath) {
+uint8_t hl_file(const fs_dat_t *fpath, const fs_dat_t *lnk_fpath) {
     
 }
