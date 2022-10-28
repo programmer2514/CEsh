@@ -81,8 +81,8 @@ Entry 1:
   Each entry will be the offset in entry 3 (pathnames index) where
   each respective letter occurs, or 65535 if it doesn't
 
-  Note: This is sorted by the name of the LAST folder in the path, so
-  /usr/bin/ would be placed under 'B'/'b', not 'U'/'u'
+  Note: This is sorted by the name of the FIRST folder in the path, so
+  /usr/bin/ would be placed under 'U'/'u', not 'B'/'b'
 
   Example:
     - [0, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535, 65535,
