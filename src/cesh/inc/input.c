@@ -218,17 +218,11 @@ void parse_user_input(void) {
             parse_draw_string("\\n");
         }
 
-    // Prevent shell running itself
-    } else if (!strcmp(input, "./CESH")) {
-
-        draw_newline();
-        draw_str_update_buf("No");
-
     // Command: .
     } else if (input[0] == '.') {
 
         if (input[1] == '/') {
-            retval = run_prgm(&input[2], "null");
+            retval = run_prgm(numargs, arglocs);
 
             draw_newline();
             draw_str_update_buf("Error ");
@@ -256,7 +250,7 @@ void parse_user_input(void) {
         draw_str_update_buf(": command not found");
 
     }
-    
+
     free(arglocs);
     gfx_BlitBuffer();
 }

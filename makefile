@@ -11,6 +11,8 @@ ARCHIVED     = YES
 CFLAGS    = -Wall -Wextra -Oz
 CXXFLAGS  = -Wall -Wextra -Oz
 
+HAS_PRINTF = NO
+
 FONTDIR  = $(SRCDIR)/fonts
 
 FONT          = $(FONTDIR)/terminusfont.fnt

@@ -441,7 +441,7 @@ void draw_int_update_buf(int number, const uint8_t length) {
     char str[length + 1];
     uint8_t i, len;
 
-    snprintf(str, length + 1, "%d", number); // Convert integer to string
+    sprintf(str, "%d", number); // Convert integer to string
 
     // Pad with 0s if necessary
     len = strlen(str);

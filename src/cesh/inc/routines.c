@@ -1,3 +1,6 @@
+#include <string.h>
+#include <ctype.h>
+
 #include <sys/power.h>
 #include <ti/vars.h>
 
@@ -34,7 +37,7 @@ uint16_t str_to_num(const char *string, const uint8_t length, const uint8_t base
     return result;
 }
 
-int run_prgm(char *prgm, char *args) {
+int run_prgm(uint8_t numargs, uint8_t *arglocs) {
 
     int ret;
     uint16_t cursorPos[2] = {SCR_OFFSET_X, SCR_OFFSET_Y};
@@ -43,11 +46,23 @@ int run_prgm(char *prgm, char *args) {
          sdItalicText = false,
          sdBoldText = false;
 
+    char *prgm = &input[2];
+
+    // Convert program name to uppercase
+    char *s = prgm;
+    while (*s) {
+        *s = toupper(*s);
+        s++;
+    }
+
+    // Prevent shell running itself
+    if (!strcmp(prgm, "CESH"))
+        return -3;
+
     // Make sure program actually exists
     appvarSlot = ti_OpenVar(prgm, "r", OS_TYPE_PRGM);
-    if (appvarSlot == 0) {
+    if (appvarSlot == 0)
         return -1;
-    }
     ti_Close(appvarSlot);
 
     // Set save state variables
@@ -71,6 +86,16 @@ int run_prgm(char *prgm, char *args) {
     ti_Write(&sdUnderlineText, sizeof(bool), 1, appvarSlot);
     ti_Write(&sdItalicText, sizeof(bool), 1, appvarSlot);
     ti_Write(&sdBoldText, sizeof(bool), 1, appvarSlot);
+
+    ti_SetArchiveStatus(true, appvarSlot);
+    ti_Close(appvarSlot);
+
+    // Save passed args
+    appvarSlot = ti_Open("CEshArgs", "w+");
+
+    ti_Write(&input, sizeof(char), INPUT_LENGTH, appvarSlot);
+    ti_Write(&numargs, sizeof(uint8_t), 1, appvarSlot);
+    ti_Write(arglocs, sizeof(uint8_t), numargs, appvarSlot);
 
     ti_SetArchiveStatus(true, appvarSlot);
     ti_Close(appvarSlot);

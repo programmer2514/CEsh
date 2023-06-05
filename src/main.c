@@ -5,6 +5,8 @@
 // Description: A (ba)sh-inspired shell for the TI-84 Plus CE //
 ////////////////////////////////////////////////////////////////
 
+#include <stdint.h>
+
 #include "cesh/cesh.h"
 
 int main(void)

@@ -75,6 +75,9 @@ void sh_init(void) {
     gfx_FillScreen(BLACK);
     gfx_BlitBuffer();
 
+    // Clean up leftover exec args
+    ti_Delete("CEshArgs");
+
     // Load shell state
     appvarSlot = ti_Open("CEshSett", "r");
 
@@ -243,7 +246,7 @@ void sh_shell(void) {
         } else {
             sh_splash();
         }
-        
+
         // Startup text
         draw_str_update_buf("CEsh v0.1a - The TI-84 Plus CE terminal");
         draw_newline();
